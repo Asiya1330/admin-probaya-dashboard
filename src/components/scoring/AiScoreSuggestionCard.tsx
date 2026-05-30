@@ -2,6 +2,7 @@
 
 import { useState, type JSX } from "react";
 
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,7 @@ import type { AiScoreSuggestion } from "@/types/admin.types";
 type AiScoreSuggestionCardProps = {
   ingredientName: string;
   suggestion: AiScoreSuggestion;
+  isPending?: boolean;
   onApprove: () => void;
   onReject: () => void;
   onEdit: (edited: AiScoreSuggestion) => void;
@@ -25,6 +27,7 @@ type AiScoreSuggestionCardProps = {
 export const AiScoreSuggestionCard = ({
   ingredientName,
   suggestion,
+  isPending = false,
   onApprove,
   onReject,
   onEdit,
@@ -63,15 +66,21 @@ export const AiScoreSuggestionCard = ({
             <Select
               value={String(edited.impact_score)}
               onValueChange={(v): void =>
-                setEdited({ ...edited, impact_score: Number(v) as AiScoreSuggestion["impact_score"] })
+                setEdited({
+                  ...edited,
+                  impact_score: Number(v) as AiScoreSuggestion["impact_score"],
+                })
               }
+              disabled={isPending}
             >
               <SelectTrigger className="bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {["-2", "-1", "0", "1", "2"].map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -84,6 +93,7 @@ export const AiScoreSuggestionCard = ({
                 setEdited({ ...edited, classification: e.target.value })
               }
               className="bg-background"
+              disabled={isPending}
             />
           </div>
           <div className="space-y-2">
@@ -94,6 +104,7 @@ export const AiScoreSuggestionCard = ({
                 setEdited({ ...edited, plain_english_summary: e.target.value })
               }
               className="bg-background"
+              disabled={isPending}
             />
           </div>
         </div>
@@ -101,13 +112,28 @@ export const AiScoreSuggestionCard = ({
       <div className="mt-4 flex flex-wrap gap-2">
         {!isEditing ? (
           <>
-            <Button className="btn-success border-0" onClick={onApprove}>
-              Approve
+            <Button
+              className="btn-success border-0"
+              disabled={isPending}
+              onClick={onApprove}
+            >
+              {isPending ? (
+                <>
+                  <LoadingSpinner />
+                  Saving...
+                </>
+              ) : (
+                "Approve"
+              )}
             </Button>
-            <Button variant="outline" onClick={(): void => setIsEditing(true)}>
+            <Button
+              variant="outline"
+              disabled={isPending}
+              onClick={(): void => setIsEditing(true)}
+            >
               Edit
             </Button>
-            <Button variant="destructive" onClick={onReject}>
+            <Button variant="destructive" disabled={isPending} onClick={onReject}>
               Reject
             </Button>
           </>
@@ -115,14 +141,26 @@ export const AiScoreSuggestionCard = ({
           <>
             <Button
               className="btn-success border-0"
+              disabled={isPending}
               onClick={(): void => {
                 onEdit(edited);
                 setIsEditing(false);
               }}
             >
-              Save & Approve
+              {isPending ? (
+                <>
+                  <LoadingSpinner />
+                  Saving...
+                </>
+              ) : (
+                "Save & Approve"
+              )}
             </Button>
-            <Button variant="outline" onClick={(): void => setIsEditing(false)}>
+            <Button
+              variant="outline"
+              disabled={isPending}
+              onClick={(): void => setIsEditing(false)}
+            >
               Cancel Edit
             </Button>
           </>

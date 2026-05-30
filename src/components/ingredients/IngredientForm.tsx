@@ -8,6 +8,7 @@ import {
   createIngredient,
   updateIngredient,
 } from "@/actions/ingredients.actions";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -133,7 +134,16 @@ export const IngredientForm = ({ ingredient }: IngredientFormProps): JSX.Element
       </div>
       <div className="flex gap-2">
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving..." : ingredient ? "Save Changes" : "Create Ingredient"}
+          {isPending ? (
+            <>
+              <LoadingSpinner />
+              Saving...
+            </>
+          ) : ingredient ? (
+            "Save Changes"
+          ) : (
+            "Create Ingredient"
+          )}
         </Button>
         <Button type="button" variant="outline" onClick={(): void => router.back()}>
           Cancel

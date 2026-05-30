@@ -3,8 +3,9 @@
 import { Download, Filter, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent, type JSX } from "react";
+import { useTransition, type FormEvent, type JSX } from "react";
 
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -29,6 +30,7 @@ export const PageToolbar = ({
   const router = useRouter();
   const searchParams = useSearchParams();
   const search = searchParams.get("search") ?? "";
+  const [isSearching, startTransition] = useTransition();
 
   const handleSearch = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -41,7 +43,10 @@ export const PageToolbar = ({
       params.delete("search");
     }
     params.set("page", "1");
-    router.push(`${pathname}?${params.toString()}`);
+
+    startTransition((): void => {
+      router.push(`${pathname}?${params.toString()}`);
+    });
   };
 
   return (
@@ -77,14 +82,30 @@ export const PageToolbar = ({
         </div>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
-        <form onSubmit={handleSearch} className="relative flex-1">
-          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            name="search"
-            defaultValue={search}
-            placeholder={`Search ${resourceLabel.toLowerCase()}...`}
-            className="border-border bg-card pl-9"
-          />
+        <form onSubmit={handleSearch} className="flex flex-1 gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              name="search"
+              defaultValue={search}
+              placeholder={`Search ${resourceLabel.toLowerCase()}...`}
+              className="border-border bg-card pl-9"
+              disabled={isSearching}
+            />
+          </div>
+          <Button type="submit" variant="outline" disabled={isSearching}>
+            {isSearching ? (
+              <>
+                <LoadingSpinner />
+                Searching...
+              </>
+            ) : (
+              <>
+                <Search className="size-4" />
+                Search
+              </>
+            )}
+          </Button>
         </form>
         <Button variant="outline" type="button" className="border-border bg-card">
           <Filter className="size-4" />

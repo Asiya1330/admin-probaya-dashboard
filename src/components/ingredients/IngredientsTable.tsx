@@ -3,10 +3,11 @@
 import { Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type JSX } from "react";
+import { useState, useTransition, type JSX } from "react";
 import { toast } from "sonner";
 
 import { deleteIngredient } from "@/actions/ingredients.actions";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { PageToolbar } from "@/components/shared/PageToolbar";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,11 @@ type IngredientsTableProps = {
   result: PaginatedResult<Ingredient>;
 };
 
+type DeleteTarget = {
+  id: string;
+  name: string;
+};
+
 const getClassificationClass = (classification: string | null): string => {
   if (classification === "Beneficial") return "badge-green";
   if (classification === "Harmful") return "border-red-500/30 bg-red-500/15 text-red-300";
@@ -36,20 +42,27 @@ export const IngredientsTable = ({
   result,
 }: IngredientsTableProps): JSX.Element => {
   const router = useRouter();
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = async (ingredientId: string): Promise<void> => {
-    setDeletingId(ingredientId);
-    const response = await deleteIngredient(ingredientId);
-    setDeletingId(null);
+  const handleConfirmDelete = (): void => {
+    if (!deleteTarget) return;
 
-    if (!response.success) {
-      toast.error(response.error);
-      return;
-    }
+    setIsDeleting(true);
+    startTransition(async (): Promise<void> => {
+      const response = await deleteIngredient(deleteTarget.id);
+      setIsDeleting(false);
 
-    toast.success("Ingredient deleted");
-    router.refresh();
+      if (!response.success) {
+        toast.error(response.error);
+        return;
+      }
+
+      toast.success("Ingredient deleted");
+      setDeleteTarget(null);
+      router.refresh();
+    });
   };
 
   return (
@@ -60,71 +73,85 @@ export const IngredientsTable = ({
         addHref="/ingredients/new"
         addLabel="Add Ingredient"
       />
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableHead>Name</TableHead>
-              <TableHead>INCI Name</TableHead>
-              <TableHead>Score</TableHead>
-              <TableHead>Classification</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {result.data.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No ingredients found.
-                </TableCell>
+        <div className=" rounded-xl border border-border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead>Name</TableHead>
+                <TableHead>INCI Name</TableHead>
+                <TableHead>Score</TableHead>
+                <TableHead>Classification</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              result.data.map((ingredient) => (
-                <TableRow key={ingredient.ingredient_id} className="border-border">
-                  <TableCell className="font-medium text-white">
-                    {ingredient.ingredient_name}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {ingredient.inci_name}
-                  </TableCell>
-                  <TableCell>{ingredient.impact_score ?? "—"}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex rounded-full border px-2 py-0.5 text-xs ${getClassificationClass(ingredient.classification)}`}
-                    >
-                      {ingredient.classification ?? "Unscored"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon-sm" asChild>
-                        <Link href={`/ingredients/${ingredient.ingredient_id}/edit`}>
-                          <Pencil className="size-4 text-[#3b82f6]" />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={deletingId === ingredient.ingredient_id}
-                        onClick={(): void => {
-                          void handleDelete(ingredient.ingredient_id);
-                        }}
-                      >
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
-                    </div>
+            </TableHeader>
+            <TableBody>
+              {result.data.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    No ingredients found.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                result.data.map((ingredient) => (
+                  <TableRow key={ingredient.ingredient_id} className="border-border">
+                    <TableCell className="font-medium text-white">
+                      {ingredient.ingredient_name}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {ingredient.inci_name}
+                    </TableCell>
+                    <TableCell>{ingredient.impact_score ?? "—"}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex rounded-full border px-2 py-0.5 text-xs ${getClassificationClass(ingredient.classification)}`}
+                      >
+                        {ingredient.classification ?? "Unscored"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon-sm" asChild>
+                          <Link href={`/ingredients/${ingredient.ingredient_id}/edit`}>
+                            <Pencil className="size-4 text-[#3b82f6]" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={isPending}
+                          onClick={(): void => {
+                            setDeleteTarget({
+                              id: ingredient.ingredient_id,
+                              name: ingredient.ingredient_name,
+                            });
+                          }}
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       <DataTablePagination
         page={result.page}
         total={result.total}
         pageSize={result.pageSize}
         totalPages={result.totalPages}
+      />
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open): void => {
+          if (!open && !isDeleting) setDeleteTarget(null);
+        }}
+        title="Delete ingredient"
+        description={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete ingredient"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );

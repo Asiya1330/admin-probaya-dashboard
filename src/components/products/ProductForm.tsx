@@ -5,6 +5,7 @@ import { useTransition, type JSX } from "react";
 import { toast } from "sonner";
 
 import { createProduct, updateProduct } from "@/actions/products.actions";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,7 +115,16 @@ export const ProductForm = ({ product }: ProductFormProps): JSX.Element => {
       </div>
       <div className="flex gap-2">
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving..." : product ? "Save Product" : "Create Product"}
+          {isPending ? (
+            <>
+              <LoadingSpinner />
+              Saving...
+            </>
+          ) : product ? (
+            "Save Product"
+          ) : (
+            "Create Product"
+          )}
         </Button>
         <Button type="button" variant="outline" onClick={(): void => router.back()}>
           Cancel

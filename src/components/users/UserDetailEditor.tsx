@@ -2,6 +2,7 @@
 
 import { useState, type JSX } from "react";
 
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -62,7 +63,14 @@ export const UserDetailEditor = ({
         onClick={handleSave}
         disabled={!hasChanges || mutation.isPending}
       >
-        {mutation.isPending ? "Saving..." : "Save role"}
+        {mutation.isPending ? (
+          <>
+            <LoadingSpinner />
+            Saving...
+          </>
+        ) : (
+          "Save role"
+        )}
       </Button>
     </div>
   );

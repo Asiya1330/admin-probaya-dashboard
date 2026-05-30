@@ -40,7 +40,7 @@ export const UsersTable = ({ result }: UsersTableProps): JSX.Element => {
   return (
     <div className="flex flex-1 flex-col gap-6 overflow-auto p-4 md:p-8">
       <PageToolbar total={result.total} resourceLabel="Users" showExport={false} />
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className=" rounded-xl border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">

@@ -6,6 +6,7 @@ import { useState, useTransition, type JSX } from "react";
 import { useForm } from "react-hook-form";
 
 import { signIn } from "@/actions/auth.actions";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,7 +80,14 @@ export const LoginForm = ({ serverError }: LoginFormProps): JSX.Element => {
         </p>
       ) : null}
       <Button type="submit" className="w-full" disabled={isPending}>
-        {isPending ? "Signing in..." : "Sign in"}
+        {isPending ? (
+          <>
+            <LoadingSpinner />
+            Signing in...
+          </>
+        ) : (
+          "Sign in"
+        )}
       </Button>
     </form>
   );

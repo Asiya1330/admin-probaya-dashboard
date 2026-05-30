@@ -6,6 +6,7 @@ import { getUsersPage, requireAdmin } from "@/lib/users";
 import type { PaginatedResult } from "@/lib/pagination";
 import { updateRoleSchema } from "@/lib/validators/user.schema";
 import type { Profile, UserRole, UserWithProfile } from "@/types/database.types";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ActionResult<T> =
   | { success: true; data: T }
@@ -34,15 +35,20 @@ export async function updateUserRole(
   userId: string,
   role: UserRole,
 ): Promise<ActionResult<Profile>> {
+  console.log("before auth", userId, role);
   const auth = await requireAdmin();
+  console.log("after auth", auth);
   if (!auth.authorized) {
     return { success: false, error: auth.error };
   }
 
+  console.log("before parsing", userId, role);
   const parsed = updateRoleSchema.safeParse({ role });
+  console.log("after parsing", parsed);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid role" };
   }
+
 
   if (userId === auth.userId && role !== "admin") {
     return {
@@ -51,10 +57,10 @@ export async function updateUserRole(
     };
   }
 
-  const { createClient } = await import("@/lib/supabase/server");
-  const supabase = await createClient();
+  const supabaseAdmin = await createAdminClient();
 
-  const { data, error } = await supabase
+  console.log("before updating", userId, parsed.data.role);
+  const { data, error } = await supabaseAdmin
     .from("profiles")
     .update({ role: parsed.data.role })
     .eq("id", userId)

@@ -11,6 +11,7 @@ import {
 import { saveProductScore } from "@/actions/products.actions";
 import { AiScoreSuggestionCard } from "@/components/scoring/AiScoreSuggestionCard";
 import { ScoreBreakdown } from "@/components/scoring/ScoreBreakdown";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import {
   calculateProductScore,
@@ -31,6 +32,8 @@ export const ProductScoringPanel = ({
 }: ProductScoringPanelProps): JSX.Element => {
   const [statuses, setStatuses] = useState(initialStatuses);
   const [loadingInci, setLoadingInci] = useState<string | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
   const [suggestion, setSuggestion] = useState<{
     inciName: string;
     ingredientName: string;
@@ -61,12 +64,14 @@ export const ProductScoringPanel = ({
   ): Promise<void> => {
     if (!suggestion) return;
 
+    setIsApproving(true);
     const data = edited ?? suggestion.data;
     const result = await approveIngredientScore(
       suggestion.inciName,
       suggestion.ingredientName,
       data,
     );
+    setIsApproving(false);
 
     if (!result.success) {
       toast.error(result.error);
@@ -113,7 +118,10 @@ export const ProductScoringPanel = ({
       return;
     }
 
+    setIsCalculating(true);
     const saveResult = await saveProductScore(productId);
+    setIsCalculating(false);
+
     if (!saveResult.success) {
       toast.error(saveResult.error);
       return;
@@ -165,13 +173,22 @@ export const ProductScoringPanel = ({
                   <Button
                     size="sm"
                     className="bg-[#8b5cf6] hover:bg-[#7c3aed]"
-                    disabled={loadingInci === status.inci_name}
+                    disabled={loadingInci === status.inci_name || isApproving}
                     onClick={(): void => {
                       void handleScoreWithAI(status.inci_name, status.ingredient_name);
                     }}
                   >
-                    <Sparkles className="size-4" />
-                    {loadingInci === status.inci_name ? "Scoring..." : "Score with AI"}
+                    {loadingInci === status.inci_name ? (
+                      <>
+                        <LoadingSpinner />
+                        Scoring...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="size-4" />
+                        Score with AI
+                      </>
+                    )}
                   </Button>
                 ) : null}
               </div>
@@ -180,8 +197,21 @@ export const ProductScoringPanel = ({
         </div>
         {statuses.length > 0 ? (
           <div className="mt-4">
-            <Button className="btn-success border-0" onClick={(): void => { void handleCalculateScore(); }}>
-              Calculate & Save Product Score
+            <Button
+              className="btn-success border-0"
+              disabled={isCalculating || isApproving}
+              onClick={(): void => {
+                void handleCalculateScore();
+              }}
+            >
+              {isCalculating ? (
+                <>
+                  <LoadingSpinner />
+                  Calculating...
+                </>
+              ) : (
+                "Calculate & Save Product Score"
+              )}
             </Button>
           </div>
         ) : null}
@@ -191,9 +221,14 @@ export const ProductScoringPanel = ({
         <AiScoreSuggestionCard
           ingredientName={suggestion.ingredientName}
           suggestion={suggestion.data}
-          onApprove={(): void => { void handleApprove(); }}
+          isPending={isApproving}
+          onApprove={(): void => {
+            void handleApprove();
+          }}
           onReject={(): void => setSuggestion(null)}
-          onEdit={(edited): void => { void handleApprove(edited); }}
+          onEdit={(edited): void => {
+            void handleApprove(edited);
+          }}
         />
       ) : null}
 

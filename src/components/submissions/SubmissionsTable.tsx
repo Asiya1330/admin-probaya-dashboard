@@ -1,16 +1,17 @@
 "use client";
 
 import { Check, Eye, X } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, type JSX } from "react";
+import { useState, useTransition, type JSX } from "react";
 import { toast } from "sonner";
 
 import {
   approveSubmission,
   rejectSubmission,
 } from "@/actions/submissions.actions";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { FallbackImage } from "@/components/shared/FallbackImage";
 import { PageToolbar } from "@/components/shared/PageToolbar";
 import { SubmissionReviewDialog } from "@/components/submissions/SubmissionReviewDialog";
 import { Button } from "@/components/ui/button";
@@ -30,32 +31,52 @@ type SubmissionsTableProps = {
   result: PaginatedResult<ProductSubmission>;
 };
 
+type ActionTarget = {
+  id: string;
+  name: string;
+  action: "approve" | "reject";
+};
+
 export const SubmissionsTable = ({
   result,
 }: SubmissionsTableProps): JSX.Element => {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [reviewItem, setReviewItem] = useState<ProductSubmission | null>(null);
-  const [actionId, setActionId] = useState<string | null>(null);
+  const [actionTarget, setActionTarget] = useState<ActionTarget | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAction = async (
-    id: string,
-    action: "approve" | "reject",
-  ): Promise<void> => {
-    setActionId(id);
-    const response =
-      action === "approve"
-        ? await approveSubmission(id)
-        : await rejectSubmission(id);
-    setActionId(null);
+  const handleConfirmAction = (): void => {
+    if (!actionTarget) return;
 
-    if (!response.success) {
-      toast.error(response.error);
-      return;
-    }
+    setIsSubmitting(true);
+    startTransition(async (): Promise<void> => {
+      const response =
+        actionTarget.action === "approve"
+          ? await approveSubmission(actionTarget.id)
+          : await rejectSubmission(actionTarget.id);
+      setIsSubmitting(false);
 
-    toast.success(`Submission ${action}d`);
-    router.refresh();
+      if (!response.success) {
+        toast.error(response.error);
+        return;
+      }
+
+      toast.success(`Submission ${actionTarget.action}d`);
+      setActionTarget(null);
+      router.refresh();
+    });
   };
+
+  const confirmTitle =
+    actionTarget?.action === "approve"
+      ? "Approve submission"
+      : "Reject submission";
+
+  const confirmDescription =
+    actionTarget?.action === "approve"
+      ? `Approve "${actionTarget?.name}" and publish it to the product catalog?`
+      : `Reject "${actionTarget?.name}"? This submission will be declined.`;
 
   return (
     <div className="flex flex-1 flex-col gap-6 overflow-auto p-4 md:p-8">
@@ -64,98 +85,100 @@ export const SubmissionsTable = ({
         resourceLabel="Submissions"
         showExport={false}
       />
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableHead>Preview</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Brand</TableHead>
-              <TableHead>Submitted</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {result.data.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No submissions found.
-                </TableCell>
+        <div className=" rounded-xl border border-border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead>Preview</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Brand</TableHead>
+                <TableHead>Submitted</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              result.data.map((submission) => (
-                <TableRow key={submission.id} className="border-border">
-                  <TableCell>
-                    <div className="relative size-10 overflow-hidden rounded-lg bg-muted">
-                      {submission.image_url ? (
-                        <Image
+            </TableHeader>
+            <TableBody>
+              {result.data.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    No submissions found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                result.data.map((submission) => (
+                  <TableRow key={submission.id} className="border-border">
+                    <TableCell>
+                      <div className="relative size-10 overflow-hidden rounded-lg bg-muted">
+                        <FallbackImage
                           src={submission.image_url}
                           alt={submission.product_name}
                           fill
                           className="object-cover"
-                          unoptimized
                         />
-                      ) : (
-                        <div className="flex size-full items-center justify-center text-xs text-muted-foreground">
-                          N/A
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium text-white">
-                    {submission.product_name}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {submission.brand}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {submission.submitted_at
-                      ? formatUserDate(submission.submitted_at)
-                      : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <span className="badge-purple rounded-full border px-2 py-0.5 text-xs capitalize">
-                      {submission.status ?? "pending"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={(): void => setReviewItem(submission)}
-                      >
-                        <Eye className="size-4 text-[#3b82f6]" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={actionId === submission.id}
-                        onClick={(): void => {
-                          void handleAction(submission.id, "approve");
-                        }}
-                      >
-                        <Check className="size-4 text-[#22c55e]" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={actionId === submission.id}
-                        onClick={(): void => {
-                          void handleAction(submission.id, "reject");
-                        }}
-                      >
-                        <X className="size-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium text-white">
+                      {submission.product_name}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {submission.brand}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {submission.submitted_at
+                        ? formatUserDate(submission.submitted_at)
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <span className="badge-purple rounded-full border px-2 py-0.5 text-xs capitalize">
+                        {submission.status ?? "pending"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={isPending}
+                          onClick={(): void => setReviewItem(submission)}
+                        >
+                          <Eye className="size-4 text-[#3b82f6]" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={isPending}
+                          onClick={(): void => {
+                            setActionTarget({
+                              id: submission.id,
+                              name: submission.product_name,
+                              action: "approve",
+                            });
+                          }}
+                        >
+                          <Check className="size-4 text-[#22c55e]" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={isPending}
+                          onClick={(): void => {
+                            setActionTarget({
+                              id: submission.id,
+                              name: submission.product_name,
+                              action: "reject",
+                            });
+                          }}
+                        >
+                          <X className="size-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       <DataTablePagination
         page={result.page}
         total={result.total}
@@ -168,6 +191,20 @@ export const SubmissionsTable = ({
         onOpenChange={(open): void => {
           if (!open) setReviewItem(null);
         }}
+      />
+      <ConfirmDialog
+        open={actionTarget !== null}
+        onOpenChange={(open): void => {
+          if (!open && !isSubmitting) setActionTarget(null);
+        }}
+        title={confirmTitle}
+        description={confirmDescription}
+        confirmLabel={
+          actionTarget?.action === "approve" ? "Approve" : "Reject"
+        }
+        variant={actionTarget?.action === "approve" ? "default" : "destructive"}
+        isLoading={isSubmitting}
+        onConfirm={handleConfirmAction}
       />
     </div>
   );

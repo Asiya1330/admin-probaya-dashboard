@@ -1,9 +1,10 @@
 "use client";
 
 import { LogOut, Menu } from "lucide-react";
-import { type JSX } from "react";
+import { useTransition, type JSX } from "react";
 
 import { signOut } from "@/actions/auth.actions";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -25,8 +26,12 @@ export const Header = ({
   userEmail,
   pendingSubmissions,
 }: HeaderProps): JSX.Element => {
-  const handleSignOut = async (): Promise<void> => {
-    await signOut();
+  const [isSigningOut, startTransition] = useTransition();
+
+  const handleSignOut = (): void => {
+    startTransition(async (): Promise<void> => {
+      await signOut();
+    });
   };
 
   return (
@@ -62,11 +67,21 @@ export const Header = ({
       <Button
         variant="outline"
         size="sm"
+        disabled={isSigningOut}
         onClick={handleSignOut}
         className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
       >
-        <LogOut className="size-4" />
-        Logout
+        {isSigningOut ? (
+          <>
+            <LoadingSpinner />
+            Signing out...
+          </>
+        ) : (
+          <>
+            <LogOut className="size-4" />
+            Logout
+          </>
+        )}
       </Button>
     </header>
   );

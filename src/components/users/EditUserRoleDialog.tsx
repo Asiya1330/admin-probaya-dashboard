@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useUpdateUserRole } from "@/hooks/useUpdateUserRole";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import {
   updateRoleSchema,
   type UpdateRoleInput,
@@ -104,7 +105,14 @@ export const EditUserRoleDialog = ({
               Cancel
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Saving..." : "Save changes"}
+              {mutation.isPending ? (
+                <>
+                  <LoadingSpinner />
+                  Saving...
+                </>
+              ) : (
+                "Save changes"
+              )}
             </Button>
           </DialogFooter>
         </form>
