@@ -8,6 +8,18 @@ import { useTransition, type FormEvent, type JSX } from "react";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+export type StatusFilterOption = {
+  value: string;
+  label: string;
+};
 
 type PageToolbarProps = {
   total: number;
@@ -16,6 +28,12 @@ type PageToolbarProps = {
   addLabel?: string;
   showExport?: boolean;
   onExport?: () => void;
+  statusFilter?: {
+    paramKey?: string;
+    value: string;
+    options: StatusFilterOption[];
+    placeholder?: string;
+  };
 };
 
 export const PageToolbar = ({
@@ -25,28 +43,41 @@ export const PageToolbar = ({
   addLabel = "Add New",
   showExport = true,
   onExport,
+  statusFilter,
 }: PageToolbarProps): JSX.Element => {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const search = searchParams.get("search") ?? "";
-  const [isSearching, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
+  const statusParamKey = statusFilter?.paramKey ?? "status";
+
+  const updateParams = (updates: Record<string, string | null>): void => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(updates)) {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    }
+    params.set("page", "1");
+    startTransition((): void => {
+      router.push(`${pathname}?${params.toString()}`);
+    });
+  };
+
+  const handleStatusChange = (value: string): void => {
+    updateParams({
+      [statusParamKey]: value === "both" ? null : value,
+    });
+  };
 
   const handleSearch = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const value = String(formData.get("search") ?? "");
-    const params = new URLSearchParams(searchParams.toString());
-    if (value) {
-      params.set("search", value);
-    } else {
-      params.delete("search");
-    }
-    params.set("page", "1");
-
-    startTransition((): void => {
-      router.push(`${pathname}?${params.toString()}`);
-    });
+    updateParams({ search: value || null });
   };
 
   return (
@@ -90,11 +121,11 @@ export const PageToolbar = ({
               defaultValue={search}
               placeholder={`Search ${resourceLabel.toLowerCase()}...`}
               className="border-border bg-card pl-9"
-              disabled={isSearching}
+              disabled={isPending}
             />
           </div>
-          <Button type="submit" variant="outline" disabled={isSearching}>
-            {isSearching ? (
+          <Button type="submit" variant="outline" disabled={isPending}>
+            {isPending ? (
               <>
                 <LoadingSpinner />
                 Searching...
@@ -107,10 +138,30 @@ export const PageToolbar = ({
             )}
           </Button>
         </form>
-        <Button variant="outline" type="button" className="border-border bg-card">
-          <Filter className="size-4" />
-          Filter
-        </Button>
+        {statusFilter ? (
+          <Select
+            value={statusFilter.value}
+            onValueChange={handleStatusChange}
+            disabled={isPending}
+          >
+            <SelectTrigger className="w-full min-w-[11rem] border-border bg-card sm:w-48">
+              <Filter className="size-4 shrink-0 text-muted-foreground" />
+              <SelectValue placeholder={statusFilter.placeholder ?? "Filter status"} />
+            </SelectTrigger>
+            <SelectContent>
+              {statusFilter.options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Button variant="outline" type="button" className="border-border bg-card">
+            <Filter className="size-4" />
+            Filter
+          </Button>
+        )}
       </div>
     </div>
   );

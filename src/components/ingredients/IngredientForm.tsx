@@ -1,42 +1,83 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition, type JSX } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import {
   createIngredient,
   updateIngredient,
 } from "@/actions/ingredients.actions";
+import { FormFieldError } from "@/components/shared/FormFieldError";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
+import { RequiredLabel } from "@/components/shared/RequiredLabel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { fieldClassName } from "@/lib/form-field-styles";
+import {
+  IMPACT_SCORES,
+  INGREDIENT_CLASSIFICATIONS,
+  ingredientFormSchema,
+  type IngredientFormInput,
+} from "@/lib/validators/ingredient.schema";
+import { cn } from "@/lib/utils";
 import type { Ingredient } from "@/types/admin.types";
 
 type IngredientFormProps = {
   ingredient?: Ingredient;
 };
 
-const selectClassName =
-  "h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+const selectClassName = (invalid: boolean): string =>
+  cn(
+    "h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+    fieldClassName(invalid),
+  );
+
+const isImpactScore = (
+  value: string | null | undefined,
+): value is (typeof IMPACT_SCORES)[number] =>
+  Boolean(value && IMPACT_SCORES.includes(value as (typeof IMPACT_SCORES)[number]));
+
+const isClassification = (
+  value: string | null | undefined,
+): value is (typeof INGREDIENT_CLASSIFICATIONS)[number] =>
+  Boolean(
+    value &&
+      INGREDIENT_CLASSIFICATIONS.includes(
+        value as (typeof INGREDIENT_CLASSIFICATIONS)[number],
+      ),
+  );
 
 export const IngredientForm = ({ ingredient }: IngredientFormProps): JSX.Element => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+  const form = useForm<IngredientFormInput>({
+    resolver: zodResolver(ingredientFormSchema),
+    defaultValues: {
+      ingredient_name: ingredient?.ingredient_name ?? "",
+      inci_name: ingredient?.inci_name ?? "",
+      impact_score: isImpactScore(ingredient?.impact_score)
+        ? ingredient.impact_score
+        : undefined,
+      classification: isClassification(ingredient?.classification)
+        ? ingredient.classification
+        : undefined,
+      plain_english_summary: ingredient?.plain_english_summary ?? "",
+      notes: ingredient?.notes ?? "",
+    },
+  });
 
+  const onSubmit = form.handleSubmit((values): void => {
     const payload = {
-      ingredient_name: String(formData.get("ingredient_name") ?? ""),
-      inci_name: String(formData.get("inci_name") ?? ""),
-      impact_score: String(formData.get("impact_score") ?? "") || null,
-      classification: String(formData.get("classification") ?? "") || null,
-      plain_english_summary:
-        String(formData.get("plain_english_summary") ?? "") || null,
-      notes: String(formData.get("notes") ?? "") || null,
+      ingredient_name: values.ingredient_name,
+      inci_name: values.inci_name,
+      impact_score: values.impact_score,
+      classification: values.classification,
+      plain_english_summary: values.plain_english_summary,
+      notes: values.notes,
     };
 
     startTransition(async (): Promise<void> => {
@@ -53,84 +94,120 @@ export const IngredientForm = ({ ingredient }: IngredientFormProps): JSX.Element
       router.push("/ingredients");
       router.refresh();
     });
-  };
+  });
+
+  const {
+    register,
+    control,
+    formState: { errors },
+  } = form;
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
+      noValidate
       className="mx-auto max-w-2xl space-y-4 rounded-xl border border-border bg-card p-6"
     >
       <div className="space-y-2">
-        <Label htmlFor="ingredient_name">Ingredient Name</Label>
+        <RequiredLabel htmlFor="ingredient_name">Ingredient Name</RequiredLabel>
         <Input
           id="ingredient_name"
-          name="ingredient_name"
-          defaultValue={ingredient?.ingredient_name ?? ""}
-          required
-          className="bg-background"
+          aria-invalid={Boolean(errors.ingredient_name)}
+          className={fieldClassName(Boolean(errors.ingredient_name), "bg-background")}
+          {...register("ingredient_name")}
         />
+        <FormFieldError message={errors.ingredient_name?.message} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="inci_name">INCI Name</Label>
+        <RequiredLabel htmlFor="inci_name">INCI Name</RequiredLabel>
         <Input
           id="inci_name"
-          name="inci_name"
-          defaultValue={ingredient?.inci_name ?? ""}
-          required
-          className="bg-background"
+          aria-invalid={Boolean(errors.inci_name)}
+          className={fieldClassName(Boolean(errors.inci_name), "bg-background")}
+          {...register("inci_name")}
         />
+        <FormFieldError message={errors.inci_name?.message} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="impact_score">Impact Score</Label>
-          <select
-            id="impact_score"
+          <RequiredLabel htmlFor="impact_score">Impact Score</RequiredLabel>
+          <Controller
             name="impact_score"
-            defaultValue={ingredient?.impact_score ?? ""}
-            className={selectClassName}
-          >
-            <option value="">Select score</option>
-            {["-2", "-1", "0", "1", "2"].map((score) => (
-              <option key={score} value={score}>
-                {score}
-              </option>
-            ))}
-          </select>
+            control={control}
+            render={({ field }) => (
+              <select
+                id="impact_score"
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                aria-invalid={Boolean(errors.impact_score)}
+                className={selectClassName(Boolean(errors.impact_score))}
+              >
+                <option value="" disabled>
+                  Select score
+                </option>
+                {IMPACT_SCORES.map((score) => (
+                  <option key={score} value={score}>
+                    {score}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+          <FormFieldError message={errors.impact_score?.message} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="classification">Classification</Label>
-          <select
-            id="classification"
+          <RequiredLabel htmlFor="classification">Classification</RequiredLabel>
+          <Controller
             name="classification"
-            defaultValue={ingredient?.classification ?? ""}
-            className={selectClassName}
-          >
-            <option value="">Select classification</option>
-            {["Beneficial", "Harmful", "Neutral", "No Data"].map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
+            control={control}
+            render={({ field }) => (
+              <select
+                id="classification"
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                aria-invalid={Boolean(errors.classification)}
+                className={selectClassName(Boolean(errors.classification))}
+              >
+                <option value="" disabled>
+                  Select classification
+                </option>
+                {INGREDIENT_CLASSIFICATIONS.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+          <FormFieldError message={errors.classification?.message} />
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="plain_english_summary">Plain English Summary</Label>
+        <RequiredLabel htmlFor="plain_english_summary">
+          Plain English Summary
+        </RequiredLabel>
         <Input
           id="plain_english_summary"
-          name="plain_english_summary"
-          defaultValue={ingredient?.plain_english_summary ?? ""}
-          className="bg-background"
+          aria-invalid={Boolean(errors.plain_english_summary)}
+          className={fieldClassName(
+            Boolean(errors.plain_english_summary),
+            "bg-background",
+          )}
+          {...register("plain_english_summary")}
         />
+        <FormFieldError message={errors.plain_english_summary?.message} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="notes">Notes</Label>
+        <RequiredLabel htmlFor="notes">Notes</RequiredLabel>
         <Input
           id="notes"
-          name="notes"
-          defaultValue={ingredient?.notes ?? ""}
-          className="bg-background"
+          aria-invalid={Boolean(errors.notes)}
+          className={fieldClassName(Boolean(errors.notes), "bg-background")}
+          {...register("notes")}
         />
+        <FormFieldError message={errors.notes?.message} />
       </div>
       <div className="flex gap-2">
         <Button type="submit" disabled={isPending}>

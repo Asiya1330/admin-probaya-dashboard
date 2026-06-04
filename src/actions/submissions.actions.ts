@@ -33,11 +33,23 @@ const callAdminApi = async (
   const headers: HeadersInit = {};
   const apiKey = process.env.ADMIN_API_KEY;
   if (apiKey) {
-    headers.Authorization = `Bearer ${apiKey}`;
+    headers["x-admin-secret"] = apiKey;
   }
 
-  const response = await fetch(url.toString(), { method: "POST", headers });
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+  // TODO: Add review_notes to the request body
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${supabaseKey}`,
+      apikey: supabaseKey!,
+      "x-admin-secret": process.env.ADMIN_API_KEY!,
+    },
+    body: JSON.stringify({ review_notes: "testing" }),
+  });
+  
   if (!response.ok) {
     const text = await response.text();
     return {

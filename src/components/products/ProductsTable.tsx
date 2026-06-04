@@ -101,6 +101,7 @@ export const ProductsTable = ({ result }: ProductsTableProps): JSX.Element => {
                           alt={product.product_name ?? "Product"}
                           fill
                           className="object-cover"
+                          sizes="40px"
                         />
                       </div>
                     </TableCell>

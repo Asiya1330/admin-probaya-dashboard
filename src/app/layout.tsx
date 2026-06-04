@@ -15,7 +15,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Admin Portal | Custom Canvas",
+  title: "Admin Portal | Probaya",
   description: "Admin dashboard for managing products, ingredients, and submissions",
 };
 

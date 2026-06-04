@@ -1,35 +1,80 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition, type JSX } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { createProduct, updateProduct } from "@/actions/products.actions";
+import { FormFieldError } from "@/components/shared/FormFieldError";
+import { ImageUrlField } from "@/components/shared/ImageUrlField";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
+import { RequiredLabel } from "@/components/shared/RequiredLabel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { fieldClassName } from "@/lib/form-field-styles";
+import {
+  IMAGE_URL_VALIDATION_MESSAGE,
+  validateImageUrl,
+} from "@/lib/validators/image-url";
+import {
+  PRODUCT_CATEGORIES,
+  productFormSchema,
+  type ProductFormInput,
+} from "@/lib/validators/product.schema";
+import { cn } from "@/lib/utils";
 import type { Product } from "@/types/admin.types";
 
 type ProductFormProps = {
   product?: Product;
 };
 
+const isProductCategory = (
+  value: string | null | undefined,
+): value is (typeof PRODUCT_CATEGORIES)[number] =>
+  Boolean(value && PRODUCT_CATEGORIES.includes(value as (typeof PRODUCT_CATEGORIES)[number]));
+
 export const ProductForm = ({ product }: ProductFormProps): JSX.Element => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+  const form = useForm<ProductFormInput>({
+    resolver: zodResolver(productFormSchema),
+    defaultValues: {
+      product_name: product?.product_name ?? "",
+      brand: product?.brand ?? "",
+      barcode: product?.barcode ?? "",
+      category: isProductCategory(product?.category) ? product.category : undefined,
+      image_url: product?.image_url ?? "",
+      ingredients_list: product?.ingredients_list ?? "",
+    },
+  });
+
+  const onSubmit = form.handleSubmit(async (values): Promise<void> => {
+    const imageOk = await validateImageUrl(values.image_url);
+    if (!imageOk) {
+      form.setError("image_url", {
+        type: "validate",
+        message: IMAGE_URL_VALIDATION_MESSAGE,
+      });
+      return;
+    }
 
     const payload = {
-      product_name: String(formData.get("product_name") ?? ""),
-      brand: String(formData.get("brand") ?? "") || null,
-      barcode: String(formData.get("barcode") ?? "") || null,
-      category: String(formData.get("category") ?? "General"),
-      image_url: String(formData.get("image_url") ?? "") || null,
-      ingredients_list: String(formData.get("ingredients_list") ?? "") || null,
+      product_name: values.product_name,
+      brand: values.brand,
+      barcode: values.barcode,
+      category: values.category,
+      image_url: values.image_url,
+      ingredients_list: values.ingredients_list,
     };
 
     startTransition(async (): Promise<void> => {
@@ -46,73 +91,107 @@ export const ProductForm = ({ product }: ProductFormProps): JSX.Element => {
       router.push(`/products/${result.data.id}/edit`);
       router.refresh();
     });
-  };
+  });
+
+  const {
+    register,
+    control,
+    formState: { errors },
+  } = form;
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
+      noValidate
       className="space-y-4 rounded-xl border border-border bg-card p-6"
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="product_name">Product Name</Label>
+          <RequiredLabel htmlFor="product_name">Product Name</RequiredLabel>
           <Input
             id="product_name"
-            name="product_name"
-            defaultValue={product?.product_name ?? ""}
-            required
-            className="bg-background"
+            aria-invalid={Boolean(errors.product_name)}
+            className={fieldClassName(Boolean(errors.product_name), "bg-background")}
+            {...register("product_name")}
           />
+          <FormFieldError message={errors.product_name?.message} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="brand">Brand</Label>
+          <RequiredLabel htmlFor="brand">Brand</RequiredLabel>
           <Input
             id="brand"
-            name="brand"
-            defaultValue={product?.brand ?? ""}
-            className="bg-background"
+            aria-invalid={Boolean(errors.brand)}
+            className={fieldClassName(Boolean(errors.brand), "bg-background")}
+            {...register("brand")}
           />
+          <FormFieldError message={errors.brand?.message} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="barcode">Barcode</Label>
+          <RequiredLabel htmlFor="barcode">Barcode</RequiredLabel>
           <Input
             id="barcode"
-            name="barcode"
-            defaultValue={product?.barcode ?? ""}
-            className="bg-background"
+            aria-invalid={Boolean(errors.barcode)}
+            className={fieldClassName(Boolean(errors.barcode), "bg-background")}
+            {...register("barcode")}
           />
+          <FormFieldError message={errors.barcode?.message} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="category">Category</Label>
-          <Input
-            id="category"
+          <RequiredLabel htmlFor="category">Category</RequiredLabel>
+          <Controller
             name="category"
-            defaultValue={product?.category ?? "General"}
-            className="bg-background"
+            control={control}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger
+                  id="category"
+                  aria-invalid={Boolean(errors.category)}
+                  className={cn(
+                    "w-full",
+                    fieldClassName(Boolean(errors.category)),
+                  )}
+                >
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRODUCT_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           />
+          <FormFieldError message={errors.category?.message} />
         </div>
       </div>
+
+      <ImageUrlField
+        register={register("image_url")}
+        error={errors.image_url}
+        setError={form.setError}
+        clearErrors={form.clearErrors}
+        defaultValue={product?.image_url ?? ""}
+      />
+
       <div className="space-y-2">
-        <Label htmlFor="image_url">Image URL</Label>
-        <Input
-          id="image_url"
-          name="image_url"
-          defaultValue={product?.image_url ?? ""}
-          className="bg-background"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="ingredients_list">
+        <RequiredLabel htmlFor="ingredients_list">
           Ingredients (comma-separated INCI names)
-        </Label>
+        </RequiredLabel>
         <textarea
           id="ingredients_list"
-          name="ingredients_list"
-          defaultValue={product?.ingredients_list ?? ""}
           rows={4}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+          aria-invalid={Boolean(errors.ingredients_list)}
+          className={fieldClassName(
+            Boolean(errors.ingredients_list),
+            "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+          )}
+          {...register("ingredients_list")}
         />
+        <FormFieldError message={errors.ingredients_list?.message} />
       </div>
+
       <div className="flex gap-2">
         <Button type="submit" disabled={isPending}>
           {isPending ? (

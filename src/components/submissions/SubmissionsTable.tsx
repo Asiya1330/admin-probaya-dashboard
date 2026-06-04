@@ -25,10 +25,19 @@ import {
 } from "@/components/ui/table";
 import { formatUserDate } from "@/lib/format";
 import type { PaginatedResult } from "@/lib/pagination";
+import type { SubmissionStatusFilter } from "@/lib/submissions";
+import { cn } from "@/lib/utils";
 import type { ProductSubmission } from "@/types/admin.types";
+
+const SUBMISSION_STATUS_FILTER_OPTIONS = [
+  { value: "both", label: "Pending & rejected" },
+  { value: "pending", label: "Pending" },
+  { value: "rejected", label: "Rejected" },
+] as const;
 
 type SubmissionsTableProps = {
   result: PaginatedResult<ProductSubmission>;
+  statusFilter: SubmissionStatusFilter;
 };
 
 type ActionTarget = {
@@ -39,6 +48,7 @@ type ActionTarget = {
 
 export const SubmissionsTable = ({
   result,
+  statusFilter,
 }: SubmissionsTableProps): JSX.Element => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -84,6 +94,11 @@ export const SubmissionsTable = ({
         total={result.total}
         resourceLabel="Submissions"
         showExport={false}
+        statusFilter={{
+          value: statusFilter,
+          options: [...SUBMISSION_STATUS_FILTER_OPTIONS],
+          placeholder: "Filter by status",
+        }}
       />
         <div className=" rounded-xl border border-border bg-card">
           <Table>
@@ -105,7 +120,11 @@ export const SubmissionsTable = ({
                   </TableCell>
                 </TableRow>
               ) : (
-                result.data.map((submission) => (
+                result.data.map((submission) => {
+                  const submissionStatus = submission.status ?? "pending";
+                  const canReview = submissionStatus === "pending";
+
+                  return (
                   <TableRow key={submission.id} className="border-border">
                     <TableCell>
                       <div className="relative size-10 overflow-hidden rounded-lg bg-muted">
@@ -114,6 +133,7 @@ export const SubmissionsTable = ({
                           alt={submission.product_name}
                           fill
                           className="object-cover"
+                          sizes="40px"
                         />
                       </div>
                     </TableCell>
@@ -129,8 +149,15 @@ export const SubmissionsTable = ({
                         : "—"}
                     </TableCell>
                     <TableCell>
-                      <span className="badge-purple rounded-full border px-2 py-0.5 text-xs capitalize">
-                        {submission.status ?? "pending"}
+                      <span
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-xs capitalize",
+                          submissionStatus === "rejected"
+                            ? "border-destructive/40 bg-destructive/10 text-destructive"
+                            : "badge-purple",
+                        )}
+                      >
+                        {submissionStatus}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -146,7 +173,7 @@ export const SubmissionsTable = ({
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          disabled={isPending}
+                          disabled={isPending || !canReview}
                           onClick={(): void => {
                             setActionTarget({
                               id: submission.id,
@@ -160,7 +187,7 @@ export const SubmissionsTable = ({
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          disabled={isPending}
+                          disabled={isPending || !canReview}
                           onClick={(): void => {
                             setActionTarget({
                               id: submission.id,
@@ -174,7 +201,8 @@ export const SubmissionsTable = ({
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>

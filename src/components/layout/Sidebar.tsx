@@ -58,7 +58,7 @@ export const Sidebar = ({
         <p className="text-xs font-medium tracking-wide text-[#8b5cf6] uppercase">
           Admin Portal
         </p>
-        <p className="mt-1 text-sm font-semibold text-white">Custom Canvas</p>
+        <p className="mt-1 text-sm font-semibold text-white">Probaya</p>
       </div>
       <nav className="flex flex-1 flex-col gap-1 p-3">
         {navItems.map((item) => {

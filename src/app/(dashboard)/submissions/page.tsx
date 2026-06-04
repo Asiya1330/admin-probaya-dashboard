@@ -2,10 +2,13 @@ import { Suspense, type JSX } from "react";
 
 import { SubmissionsTable } from "@/components/submissions/SubmissionsTable";
 import { parsePageParam } from "@/lib/pagination";
-import { getSubmissionsPage } from "@/lib/submissions";
+import {
+  getSubmissionsPage,
+  parseSubmissionStatusFilter,
+} from "@/lib/submissions";
 
 type SubmissionsPageProps = {
-  searchParams: Promise<{ page?: string; search?: string }>;
+  searchParams: Promise<{ page?: string; search?: string; status?: string }>;
 };
 
 export default async function SubmissionsPage({
@@ -13,11 +16,12 @@ export default async function SubmissionsPage({
 }: SubmissionsPageProps): Promise<JSX.Element> {
   const params = await searchParams;
   const page = parsePageParam(params.page);
-  const result = await getSubmissionsPage(page, params.search, "pending");
+  const statusFilter = parseSubmissionStatusFilter(params.status);
+  const result = await getSubmissionsPage(page, params.search, statusFilter);
 
   return (
     <Suspense>
-      <SubmissionsTable result={result} />
+      <SubmissionsTable result={result} statusFilter={statusFilter} />
     </Suspense>
   );
 }

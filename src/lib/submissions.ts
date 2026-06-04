@@ -8,10 +8,27 @@ import {
 import { requireAdmin } from "@/lib/users";
 import type { ProductSubmission } from "@/types/admin.types";
 
+export const SUBMISSION_STATUS_FILTERS = [
+  "both",
+  "pending",
+  "rejected",
+] as const;
+
+export type SubmissionStatusFilter = (typeof SUBMISSION_STATUS_FILTERS)[number];
+
+export const parseSubmissionStatusFilter = (
+  value?: string,
+): SubmissionStatusFilter => {
+  if (value === "pending" || value === "rejected") {
+    return value;
+  }
+  return "both";
+};
+
 export const getSubmissionsPage = async (
   page: number,
   search?: string,
-  status = "pending",
+  statusFilter: SubmissionStatusFilter = "both",
 ): Promise<PaginatedResult<ProductSubmission>> => {
   await requireAdmin();
 
@@ -25,8 +42,10 @@ export const getSubmissionsPage = async (
     .order("submitted_at", { ascending: false })
     .range(from, to);
 
-  if (status !== "all") {
-    query = query.eq("status", status);
+  if (statusFilter === "both") {
+    query = query.in("status", ["pending", "rejected"]);
+  } else {
+    query = query.eq("status", statusFilter);
   }
 
   if (search) {
