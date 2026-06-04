@@ -30,16 +30,13 @@ export const useUpdateUserRole = (
       userId,
       role,
     }: UpdateUserRoleVariables): Promise<Profile> => {
-      console.log("Updating user role", userId, role);
       const result = await updateUserRole(userId, role);
-      console.log("Result", result);
       if (!result.success) {
         throw new Error(result.error);
       }
       return result.data;
     },
     onSuccess: (profile): void => {
-      console.log("User role updated successfully", profile);
       void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY });
       toast.success("User role updated successfully");
       router.refresh();

@@ -35,16 +35,12 @@ export async function updateUserRole(
   userId: string,
   role: UserRole,
 ): Promise<ActionResult<Profile>> {
-  console.log("before auth", userId, role);
   const auth = await requireAdmin();
-  console.log("after auth", auth);
   if (!auth.authorized) {
     return { success: false, error: auth.error };
   }
 
-  console.log("before parsing", userId, role);
   const parsed = updateRoleSchema.safeParse({ role });
-  console.log("after parsing", parsed);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid role" };
   }
