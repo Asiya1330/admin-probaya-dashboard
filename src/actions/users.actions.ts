@@ -55,7 +55,6 @@ export async function updateUserRole(
 
   const supabaseAdmin = await createAdminClient();
 
-  console.log("before updating", userId, parsed.data.role);
   const { data, error } = await supabaseAdmin
     .from("profiles")
     .update({ role: parsed.data.role })
