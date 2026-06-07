@@ -19,12 +19,14 @@ type HeaderProps = {
   userName?: string;
   userEmail?: string;
   pendingSubmissions?: number;
+  pendingFlaggedIngredients?: number;
 };
 
 export const Header = ({
   userName,
   userEmail,
   pendingSubmissions,
+  pendingFlaggedIngredients,
 }: HeaderProps): JSX.Element => {
   const [isSigningOut, startTransition] = useTransition();
 
@@ -52,6 +54,7 @@ export const Header = ({
               userName={userName}
               userEmail={userEmail}
               pendingSubmissions={pendingSubmissions}
+              pendingFlaggedIngredients={pendingFlaggedIngredients}
             />
           </SheetContent>
         </Sheet>

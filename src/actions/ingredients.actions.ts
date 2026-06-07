@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/lib/users";
 import type { Ingredient, IngredientInsert } from "@/types/admin.types";
+import type { IngredientAssociatedProduct } from "@/types/admin.types";
 
 export type ActionResult<T> =
   | { success: true; data: T }
@@ -60,6 +61,26 @@ export async function updateIngredient(
   revalidatePath("/ingredients");
   revalidatePath(`/ingredients/${ingredientId}/edit`);
   return { success: true, data };
+}
+
+export async function getIngredientAssociatedProducts(
+  ingredientId: string,
+): Promise<ActionResult<IngredientAssociatedProduct[]>> {
+  const auth = await requireAdmin();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
+
+  try {
+    const { getProductsByIngredientId } = await import("@/lib/ingredients");
+    const products = await getProductsByIngredientId(ingredientId);
+    return { success: true, data: products };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to load products",
+    };
+  }
 }
 
 export async function deleteIngredient(

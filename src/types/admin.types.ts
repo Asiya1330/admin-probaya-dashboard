@@ -13,6 +13,9 @@ export type IngredientUpdate =
 export type ProductSubmission =
   Database["public"]["Tables"]["product_submissions"]["Row"];
 
+export type FlaggedIngredient =
+  Database["public"]["Tables"]["flagged_ingredients"]["Row"];
+
 export type ImpactScore = -2 | -1 | 0 | 1 | 2;
 export type ConfidenceLevel = "high" | "medium" | "low";
 
@@ -32,4 +35,16 @@ export type ProductIngredientStatus = {
   impact_score: string | null;
   classification: string | null;
   plain_english_summary: string | null;
+};
+
+export type IngredientAssociatedProduct = {
+  id: string;
+  product_name: string | null;
+  brand: string | null;
+};
+
+export type FlaggedIngredientProductLink = {
+  id: string;
+  product_name: string | null;
+  brand: string | null;
 };

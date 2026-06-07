@@ -3,13 +3,13 @@ import { z } from "zod";
 import { isHttpUrl } from "@/lib/validators/image-url";
 
 export const PRODUCT_CATEGORIES = [
-  "Wash",
-  "Pad",
-  "Tampon",
-  "Liner",
-  "Cup",
-  "Lubricant",
-  "Period Underwear",
+  "wash",
+  "pad",
+  "tampon",
+  "liner",
+  "cup",
+  "lubricant",
+  "period underwear",
 ] as const;
 
 export const productFormSchema = z.object({

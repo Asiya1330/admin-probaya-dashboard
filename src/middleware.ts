@@ -38,6 +38,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     .eq("id", user.id)
     .single();
 
+  // TODO: comment out and test while logged in as user
   if (profile?.role !== "admin") {
     await supabase.auth.signOut();
     const loginUrl = new URL("/login", request.url);

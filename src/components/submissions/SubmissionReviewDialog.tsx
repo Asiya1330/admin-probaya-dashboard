@@ -36,7 +36,7 @@ export const SubmissionReviewDialog = ({
             <p><span className="text-muted-foreground">Brand:</span> {submission.brand}</p>
             <p><span className="text-muted-foreground">Barcode:</span> {submission.barcode}</p>
             <p><span className="text-muted-foreground">Category:</span> {submission.category}</p>
-            <p><span className="text-muted-foreground">Submitter:</span> {submission.user_email ?? "Unknown"}</p>
+            <p><span className="text-muted-foreground">Submitter:</span> {submission.user_id ?? "Unknown"}</p>
             <p><span className="text-muted-foreground">Scan count:</span> {submission.scan_count}</p>
             <div>
               <p className="text-muted-foreground">Ingredients:</p>

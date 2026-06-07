@@ -3,6 +3,7 @@ import { Suspense, type JSX } from "react";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { getCurrentAdminUser } from "@/lib/auth";
+import { getPendingFlaggedIngredientsCount } from "@/lib/flagged-ingredients";
 import { getPendingSubmissionsCount } from "@/lib/submissions";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +15,12 @@ type DashboardLayoutProps = {
 export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps): Promise<JSX.Element> {
-  const [user, pendingSubmissions] = await Promise.all([
-    getCurrentAdminUser(),
-    getPendingSubmissionsCount(),
-  ]);
+  const [user, pendingSubmissions, pendingFlaggedIngredients] =
+    await Promise.all([
+      getCurrentAdminUser(),
+      getPendingSubmissionsCount(),
+      getPendingFlaggedIngredientsCount(),
+    ]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -26,6 +29,7 @@ export default async function DashboardLayout({
           userName={user?.displayName}
           userEmail={user?.email}
           pendingSubmissions={pendingSubmissions}
+          pendingFlaggedIngredients={pendingFlaggedIngredients}
         />
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -33,6 +37,7 @@ export default async function DashboardLayout({
           userName={user?.displayName}
           userEmail={user?.email}
           pendingSubmissions={pendingSubmissions}
+          pendingFlaggedIngredients={pendingFlaggedIngredients}
         />
         <main className="flex flex-1 flex-col overflow-hidden">
           <Suspense>{children}</Suspense>

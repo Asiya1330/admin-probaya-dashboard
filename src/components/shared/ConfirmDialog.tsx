@@ -1,6 +1,6 @@
 "use client";
 
-import { type JSX } from "react";
+import type { JSX, ReactNode } from "react";
 
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,10 @@ import {
 type ConfirmDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isLoadingProducts?: boolean;
   title: string;
   description: string;
+  children?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "destructive" | "default";
@@ -28,8 +30,10 @@ type ConfirmDialogProps = {
 export const ConfirmDialog = ({
   open,
   onOpenChange,
+  isLoadingProducts,
   title,
   description,
+  children,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   variant = "destructive",
@@ -43,6 +47,7 @@ export const ConfirmDialog = ({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {children ? <div className="space-y-3">{children}</div> : null}
         <DialogFooter>
           <Button
             type="button"
@@ -55,7 +60,7 @@ export const ConfirmDialog = ({
           <Button
             type="button"
             variant={variant === "destructive" ? "destructive" : "default"}
-            disabled={isLoading}
+            disabled={isLoading || isLoadingProducts}
             onClick={onConfirm}
           >
             {isLoading ? (

@@ -6,6 +6,7 @@ import {
   type PaginatedResult,
 } from "@/lib/pagination";
 import type { UserRole, UserWithProfile } from "@/types/database.types";
+import type { UserRoleFilter } from "@/lib/filters/users-filters";
 
 export type RequireAdminResult =
   | { authorized: true; userId: string }
@@ -37,9 +38,13 @@ export const requireAdmin = async (): Promise<RequireAdminResult> => {
   return { authorized: true, userId: user.id };
 };
 
+export type { UserRoleFilter } from "@/lib/filters/users-filters";
+export { USER_ROLE_FILTERS, parseUserRoleFilter } from "@/lib/filters/users-filters";
+
 export const getUsersPage = async (
   page: number,
   search?: string,
+  roleFilter: UserRoleFilter = "all",
 ): Promise<PaginatedResult<UserWithProfile>> => {
   await requireAdmin();
 
@@ -47,7 +52,7 @@ export const getUsersPage = async (
   const admin = createAdminClient();
 
   const { data: authData, error: authError } =
-    await admin.auth.admin.listUsers({ page, perPage: 20 });
+    await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
 
   if (authError) {
     throw new Error(authError.message);
@@ -72,17 +77,19 @@ export const getUsersPage = async (
     role: profileMap.get(user.id) ?? "user",
   }));
 
+  if (roleFilter !== "all") {
+    users = users.filter((user) => user.role === roleFilter);
+  }
+
   if (search) {
     const term = search.toLowerCase();
     users = users.filter((user) => user.email.toLowerCase().includes(term));
   }
 
-  const total =
-    "total" in authData && typeof authData.total === "number"
-      ? authData.total
-      : users.length;
+  const { from, to } = getRange(page);
+  const paginated = users.slice(from, to + 1);
 
-  return buildPaginatedResult(users, total, page);
+  return buildPaginatedResult(paginated, users.length, page);
 };
 
 export const getUserById = async (

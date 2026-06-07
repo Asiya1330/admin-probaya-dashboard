@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Flag,
   FlaskConical,
   Inbox,
   LayoutDashboard,
@@ -26,6 +27,7 @@ type SidebarProps = {
   userEmail?: string;
   userName?: string;
   pendingSubmissions?: number;
+  pendingFlaggedIngredients?: number;
   onNavigate?: () => void;
 };
 
@@ -33,6 +35,7 @@ export const Sidebar = ({
   userEmail,
   userName,
   pendingSubmissions = 0,
+  pendingFlaggedIngredients = 0,
   onNavigate,
 }: SidebarProps): JSX.Element => {
   const pathname = usePathname();
@@ -41,6 +44,12 @@ export const Sidebar = ({
     { href: "/", label: "Overview", icon: LayoutDashboard },
     { href: "/products", label: "Products", icon: Package },
     { href: "/ingredients", label: "Ingredients", icon: FlaskConical },
+    {
+      href: "/flagged-ingredients",
+      label: "Flagged",
+      icon: Flag,
+      badge: pendingFlaggedIngredients,
+    },
     {
       href: "/submissions",
       label: "Submissions",

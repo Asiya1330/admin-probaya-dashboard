@@ -77,6 +77,30 @@ export async function updateProduct(
   return { success: true, data };
 }
 
+const removeProductFromFlaggedIngredients = async (
+  admin: Awaited<ReturnType<typeof import("@/lib/supabase/admin")["createAdminClient"]>>,
+  productId: string,
+): Promise<void> => {
+  const { data: flaggedRows, error } = await admin
+    .from("flagged_ingredients")
+    .select("id, product_ids")
+    .contains("product_ids", [productId]);
+
+  if (error || !flaggedRows?.length) {
+    return;
+  }
+
+  await Promise.all(
+    flaggedRows.map((row) => {
+      const updatedIds = (row.product_ids ?? []).filter((id) => id !== productId);
+      return admin
+        .from("flagged_ingredients")
+        .update({ product_ids: updatedIds.length > 0 ? updatedIds : null })
+        .eq("id", row.id);
+    }),
+  );
+};
+
 export async function deleteProduct(
   productId: string,
 ): Promise<ActionResult<void>> {
@@ -89,6 +113,7 @@ export async function deleteProduct(
   const admin = createAdminClient();
 
   await admin.from("product_ingredients").delete().eq("product_id", productId);
+  await removeProductFromFlaggedIngredients(admin, productId);
 
   const { error } = await admin.from("products").delete().eq("id", productId);
 
@@ -97,6 +122,7 @@ export async function deleteProduct(
   }
 
   revalidatePath("/products");
+  revalidatePath("/flagged-ingredients");
   return { success: true, data: undefined };
 }
 

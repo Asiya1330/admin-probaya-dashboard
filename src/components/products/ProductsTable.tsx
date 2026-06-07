@@ -21,10 +21,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { PaginatedResult } from "@/lib/pagination";
+import {
+  PRODUCT_FILTER_CATEGORIES,
+  type ProductRatingFilter,
+} from "@/lib/filters/products-filters";
 import type { Product } from "@/types/admin.types";
 
 type ProductsTableProps = {
   result: PaginatedResult<Product>;
+  categoryFilter: string;
+  ratingFilter: ProductRatingFilter;
 };
 
 type DeleteTarget = {
@@ -39,7 +45,11 @@ const getRatingBadge = (score: number | null): string => {
   return "border-red-500/30 bg-red-500/15 text-red-300";
 };
 
-export const ProductsTable = ({ result }: ProductsTableProps): JSX.Element => {
+export const ProductsTable = ({
+  result,
+  categoryFilter,
+  ratingFilter,
+}: ProductsTableProps): JSX.Element => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
@@ -71,6 +81,34 @@ export const ProductsTable = ({ result }: ProductsTableProps): JSX.Element => {
         resourceLabel="Products"
         addHref="/products/new"
         addLabel="Add Product"
+        selectFilters={[
+          {
+            paramKey: "category",
+            value: categoryFilter,
+            clearValue: "all",
+            placeholder: "Category",
+            options: [
+              { value: "all", label: "All categories" },
+              ...PRODUCT_FILTER_CATEGORIES.map((category) => ({
+                value: category,
+                label: category,
+              })),
+            ],
+          },
+          {
+            paramKey: "rating",
+            value: ratingFilter,
+            clearValue: "all",
+            placeholder: "Rating",
+            options: [
+              { value: "all", label: "All ratings" },
+              { value: "unscored", label: "Unscored" },
+              { value: "excellent", label: "Excellent (70+)" },
+              { value: "moderate", label: "Moderate (40–69)" },
+              { value: "poor", label: "Poor (<40)" },
+            ],
+          },
+        ]}
       />
         <div className=" rounded-xl border border-border bg-card">
           <Table>
@@ -168,7 +206,7 @@ export const ProductsTable = ({ result }: ProductsTableProps): JSX.Element => {
           if (!open && !isDeleting) setDeleteTarget(null);
         }}
         title="Delete product"
-        description={`Are you sure you want to delete "${deleteTarget?.name}"? This will also remove linked ingredients. This action cannot be undone.`}
+        description={`Are you sure you want to delete "${deleteTarget?.name}"? This will remove the product and its ingredient associations. Ingredient records will not be deleted.`}
         confirmLabel="Delete product"
         isLoading={isDeleting}
         onConfirm={handleConfirmDelete}

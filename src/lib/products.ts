@@ -6,13 +6,24 @@ import {
   type PaginatedResult,
 } from "@/lib/pagination";
 import { getIngredientsByInciNames, parseIngredientsList } from "@/lib/ingredients";
+import type { ProductRatingFilter } from "@/lib/filters/products-filters";
 import { requireAdmin } from "@/lib/users";
 import type { Product, ProductIngredientStatus } from "@/types/admin.types";
 import type { ScoredIngredient } from "@/lib/scoring/calculate-product-score";
 
+export type { ProductRatingFilter } from "@/lib/filters/products-filters";
+export {
+  PRODUCT_FILTER_CATEGORIES,
+  PRODUCT_RATING_FILTERS,
+  parseProductCategoryFilter,
+  parseProductRatingFilter,
+} from "@/lib/filters/products-filters";
+
 export const getProductsPage = async (
   page: number,
   search?: string,
+  categoryFilter = "all",
+  ratingFilter: ProductRatingFilter = "all",
 ): Promise<PaginatedResult<Product>> => {
   await requireAdmin();
 
@@ -25,6 +36,20 @@ export const getProductsPage = async (
     .select("*", { count: "exact" })
     .order("createdAt", { ascending: false })
     .range(from, to);
+
+  if (categoryFilter !== "all") {
+    query = query.eq("category", categoryFilter);
+  }
+
+  if (ratingFilter === "unscored") {
+    query = query.is("score", null);
+  } else if (ratingFilter === "excellent") {
+    query = query.gte("score", 70);
+  } else if (ratingFilter === "moderate") {
+    query = query.gte("score", 40).lt("score", 70);
+  } else if (ratingFilter === "poor") {
+    query = query.lt("score", 40);
+  }
 
   if (search) {
     query = query.or(

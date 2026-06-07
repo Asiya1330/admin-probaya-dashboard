@@ -27,19 +27,41 @@ import {
 } from "@/components/ui/table";
 import { formatUserDate } from "@/lib/format";
 import type { PaginatedResult } from "@/lib/pagination";
+import type { UserRoleFilter } from "@/lib/filters/users-filters";
 import type { UserWithProfile } from "@/types/database.types";
 
 type UsersTableProps = {
   result: PaginatedResult<UserWithProfile>;
+  roleFilter: UserRoleFilter;
 };
 
-export const UsersTable = ({ result }: UsersTableProps): JSX.Element => {
+export const UsersTable = ({
+  result,
+  roleFilter,
+}: UsersTableProps): JSX.Element => {
   const [editUser, setEditUser] = useState<UserWithProfile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserWithProfile | null>(null);
 
   return (
     <div className="flex flex-1 flex-col gap-6 overflow-auto p-4 md:p-8">
-      <PageToolbar total={result.total} resourceLabel="Users" showExport={false} />
+      <PageToolbar
+        total={result.total}
+        resourceLabel="Users"
+        showExport={false}
+        selectFilters={[
+          {
+            paramKey: "role",
+            value: roleFilter,
+            clearValue: "all",
+            placeholder: "Role",
+            options: [
+              { value: "all", label: "All roles" },
+              { value: "admin", label: "Admin" },
+              { value: "user", label: "User" },
+            ],
+          },
+        ]}
+      />
       <div className=" rounded-xl border border-border bg-card">
         <Table>
           <TableHeader>

@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/table";
 import { formatUserDate } from "@/lib/format";
 import type { PaginatedResult } from "@/lib/pagination";
-import type { SubmissionStatusFilter } from "@/lib/submissions";
+import { PRODUCT_FILTER_CATEGORIES } from "@/lib/filters/products-filters";
+import type { SubmissionStatusFilter } from "@/lib/filters/submissions-filters";
 import { cn } from "@/lib/utils";
 import type { ProductSubmission } from "@/types/admin.types";
 
@@ -33,11 +34,13 @@ const SUBMISSION_STATUS_FILTER_OPTIONS = [
   { value: "both", label: "Pending & rejected" },
   { value: "pending", label: "Pending" },
   { value: "rejected", label: "Rejected" },
+  { value: "all", label: "All statuses" },
 ] as const;
 
 type SubmissionsTableProps = {
   result: PaginatedResult<ProductSubmission>;
   statusFilter: SubmissionStatusFilter;
+  categoryFilter: string;
 };
 
 type ActionTarget = {
@@ -49,6 +52,7 @@ type ActionTarget = {
 export const SubmissionsTable = ({
   result,
   statusFilter,
+  categoryFilter,
 }: SubmissionsTableProps): JSX.Element => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -94,11 +98,28 @@ export const SubmissionsTable = ({
         total={result.total}
         resourceLabel="Submissions"
         showExport={false}
-        statusFilter={{
-          value: statusFilter,
-          options: [...SUBMISSION_STATUS_FILTER_OPTIONS],
-          placeholder: "Filter by status",
-        }}
+        selectFilters={[
+          {
+            paramKey: "status",
+            value: statusFilter,
+            clearValue: "both",
+            placeholder: "Status",
+            options: [...SUBMISSION_STATUS_FILTER_OPTIONS],
+          },
+          {
+            paramKey: "category",
+            value: categoryFilter,
+            clearValue: "all",
+            placeholder: "Category",
+            options: [
+              { value: "all", label: "All categories" },
+              ...PRODUCT_FILTER_CATEGORIES.map((category) => ({
+                value: category,
+                label: category,
+              })),
+            ],
+          },
+        ]}
       />
         <div className=" rounded-xl border border-border bg-card">
           <Table>
