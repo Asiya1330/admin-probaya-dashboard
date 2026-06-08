@@ -6,6 +6,10 @@ import {
   parseIngredientClassificationFilter,
   parseIngredientScoreFilter,
 } from "@/lib/ingredients";
+import {
+  parseIngredientSortField,
+  parseIngredientSortOrder,
+} from "@/lib/filters/ingredients-filters";
 import { parsePageParam } from "@/lib/pagination";
 
 type IngredientsPageProps = {
@@ -14,6 +18,8 @@ type IngredientsPageProps = {
     search?: string;
     classification?: string;
     score?: string;
+    sort?: string;
+    order?: string;
   }>;
 };
 
@@ -26,11 +32,15 @@ export default async function IngredientsPage({
     params.classification,
   );
   const scoreFilter = parseIngredientScoreFilter(params.score);
+  const sortField = parseIngredientSortField(params.sort);
+  const sortOrder = parseIngredientSortOrder(params.order);
   const result = await getIngredientsPage(
     page,
     params.search,
     classificationFilter,
     scoreFilter,
+    sortField,
+    sortOrder,
   );
 
   return (
@@ -39,6 +49,8 @@ export default async function IngredientsPage({
         result={result}
         classificationFilter={classificationFilter}
         scoreFilter={scoreFilter}
+        sortField={sortField}
+        sortOrder={sortOrder}
       />
     </Suspense>
   );

@@ -5,6 +5,9 @@ export type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
 export type ProductUpdate = Database["public"]["Tables"]["products"]["Update"];
 
 export type Ingredient = Database["public"]["Tables"]["ingredients"]["Row"];
+export type IngredientWithProductCount = Ingredient & {
+  product_count: number;
+};
 export type IngredientInsert =
   Database["public"]["Tables"]["ingredients"]["Insert"];
 export type IngredientUpdate =

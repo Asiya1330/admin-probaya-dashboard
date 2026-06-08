@@ -1,8 +1,8 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition, type JSX } from "react";
 import { toast } from "sonner";
 
@@ -28,13 +28,21 @@ import type { PaginatedResult } from "@/lib/pagination";
 import type {
   IngredientClassificationFilter,
   IngredientScoreFilter,
+  IngredientSortField,
+  IngredientSortOrder,
 } from "@/lib/filters/ingredients-filters";
-import type { Ingredient, IngredientAssociatedProduct } from "@/types/admin.types";
+import type {
+  IngredientAssociatedProduct,
+  IngredientWithProductCount,
+} from "@/types/admin.types";
+import { cn } from "@/lib/utils";
 
 type IngredientsTableProps = {
-  result: PaginatedResult<Ingredient>;
+  result: PaginatedResult<IngredientWithProductCount>;
   classificationFilter: IngredientClassificationFilter;
   scoreFilter: IngredientScoreFilter;
+  sortField: IngredientSortField;
+  sortOrder: IngredientSortOrder;
 };
 
 type DeleteTarget = {
@@ -63,8 +71,12 @@ export const IngredientsTable = ({
   result,
   classificationFilter,
   scoreFilter,
+  sortField,
+  sortOrder,
 }: IngredientsTableProps): JSX.Element => {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [associatedProducts, setAssociatedProducts] = useState<
@@ -73,7 +85,32 @@ export const IngredientsTable = ({
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleOpenDelete = (ingredient: Ingredient): void => {
+  const handleSortProducts = (): void => {
+    const params = new URLSearchParams(searchParams.toString());
+    const nextOrder =
+      sortField === "products" && sortOrder === "desc" ? "asc" : "desc";
+
+    params.set("sort", "products");
+    params.set("order", nextOrder);
+    params.set("page", "1");
+
+    startTransition((): void => {
+      router.push(`${pathname}?${params.toString()}`);
+    });
+  };
+
+  const productsSortIcon =
+    sortField === "products" ? (
+      sortOrder === "desc" ? (
+        <ArrowDown className="size-3.5" />
+      ) : (
+        <ArrowUp className="size-3.5" />
+      )
+    ) : (
+      <ArrowUpDown className="size-3.5 opacity-50" />
+    );
+
+  const handleOpenDelete = (ingredient: IngredientWithProductCount): void => {
     setDeleteTarget({
       id: ingredient.ingredient_id,
       name: ingredient.ingredient_name,
@@ -159,6 +196,22 @@ export const IngredientsTable = ({
               <TableRow className="border-border hover:bg-transparent">
                 <TableHead>Name</TableHead>
                 <TableHead>INCI Name</TableHead>
+                <TableHead>
+                  <button
+                    type="button"
+                    className={cn(
+                      "inline-flex items-center gap-1 font-medium transition-colors hover:text-foreground",
+                      sortField === "products"
+                        ? "text-foreground"
+                        : "text-muted-foreground",
+                    )}
+                    disabled={isPending}
+                    onClick={handleSortProducts}
+                  >
+                    Products
+                    {productsSortIcon}
+                  </button>
+                </TableHead>
                 <TableHead>Score</TableHead>
                 <TableHead>Classification</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -167,7 +220,7 @@ export const IngredientsTable = ({
             <TableBody>
               {result.data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                     No ingredients found.
                   </TableCell>
                 </TableRow>
@@ -179,6 +232,18 @@ export const IngredientsTable = ({
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {ingredient.inci_name}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={cn(
+                          "inline-flex min-w-8 justify-center rounded-full border px-2 py-0.5 text-xs font-medium",
+                          ingredient.product_count > 0
+                            ? "border-[#8b5cf6]/40 bg-[#8b5cf6]/15 text-[#c4b5fd]"
+                            : "border-border bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {ingredient.product_count}
+                      </span>
                     </TableCell>
                     <TableCell>{ingredient.impact_score ?? "—"}</TableCell>
                     <TableCell>

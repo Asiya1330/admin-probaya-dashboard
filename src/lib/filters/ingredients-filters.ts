@@ -42,3 +42,29 @@ export const parseIngredientScoreFilter = (
   }
   return "all";
 };
+
+export const INGREDIENT_SORT_FIELDS = ["name", "products"] as const;
+
+export type IngredientSortField = (typeof INGREDIENT_SORT_FIELDS)[number];
+
+export const INGREDIENT_SORT_ORDERS = ["asc", "desc"] as const;
+
+export type IngredientSortOrder = (typeof INGREDIENT_SORT_ORDERS)[number];
+
+export const parseIngredientSortField = (
+  value?: string,
+): IngredientSortField => {
+  if (value === "name" || value === "products") {
+    return value;
+  }
+  return "products";
+};
+
+export const parseIngredientSortOrder = (
+  value?: string,
+): IngredientSortOrder => {
+  if (value === "asc" || value === "desc") {
+    return value;
+  }
+  return "desc";
+};

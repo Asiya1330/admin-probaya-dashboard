@@ -45,6 +45,16 @@ const getRatingBadge = (score: number | null): string => {
   return "border-red-500/30 bg-red-500/15 text-red-300";
 };
 
+const getVerifiedBadge = (verified: boolean | null): string => {
+  if (verified) {
+    return "badge-green";
+  }
+  return "border-amber-500/30 bg-amber-500/15 text-amber-300";
+};
+
+const getVerifiedLabel = (verified: boolean | null): string =>
+  verified ? "Verified" : "Unverified";
+
 export const ProductsTable = ({
   result,
   categoryFilter,
@@ -117,7 +127,9 @@ export const ProductsTable = ({
                 <TableHead>Preview</TableHead>
                 <TableHead>Product</TableHead>
                 <TableHead>Brand</TableHead>
+                <TableHead>Barcode</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Verified</TableHead>
                 <TableHead>Score</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -125,7 +137,7 @@ export const ProductsTable = ({
             <TableBody>
               {result.data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                     No products found.
                   </TableCell>
                 </TableRow>
@@ -154,9 +166,19 @@ export const ProductsTable = ({
                     <TableCell className="text-muted-foreground">
                       {product.brand ?? "—"}
                     </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {product.barcode ?? "—"}
+                    </TableCell>
                     <TableCell>
                       <span className="badge-purple rounded-full border px-2 py-0.5 text-xs">
                         {product.category}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-xs ${getVerifiedBadge(product.verified)}`}
+                      >
+                        {getVerifiedLabel(product.verified)}
                       </span>
                     </TableCell>
                     <TableCell>
