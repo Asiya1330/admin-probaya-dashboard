@@ -56,19 +56,37 @@ export const AiScoreSuggestionCard = ({
             <span className="text-muted-foreground">Classification:</span>{" "}
             {suggestion.classification}
           </p>
+          {suggestion.short_description ? (
+            <p>
+              <span className="text-muted-foreground">Summary:</span>{" "}
+              {suggestion.short_description}
+            </p>
+          ) : null}
           <p className="text-muted-foreground">{suggestion.reasoning}</p>
           <p className="text-white">{suggestion.plain_english_summary}</p>
+          {suggestion.needs_human_review ? (
+            <p className="rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
+              Needs human review
+            </p>
+          ) : null}
         </div>
       ) : (
         <div className="mt-4 space-y-3">
           <div className="space-y-2">
             <Label>Impact Score</Label>
             <Select
-              value={String(edited.impact_score)}
+              value={
+                edited.impact_score === "No Data"
+                  ? "No Data"
+                  : String(edited.impact_score)
+              }
               onValueChange={(v): void =>
                 setEdited({
                   ...edited,
-                  impact_score: Number(v) as AiScoreSuggestion["impact_score"],
+                  impact_score:
+                    v === "No Data"
+                      ? "No Data"
+                      : (Number(v) as AiScoreSuggestion["impact_score"]),
                 })
               }
               disabled={isPending}
@@ -77,6 +95,7 @@ export const AiScoreSuggestionCard = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="No Data">No Data</SelectItem>
                 {["-2", "-1", "0", "1", "2"].map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}

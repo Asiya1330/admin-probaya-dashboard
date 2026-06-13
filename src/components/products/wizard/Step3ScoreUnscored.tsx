@@ -66,7 +66,10 @@ export const Step3ScoreUnscored = ({
     updateItem(item.id, {
       category: "scored",
       ingredient_id: result.data.ingredient_id,
-      impact_score: String(suggestion.impact_score),
+      impact_score:
+        suggestion.impact_score === "No Data"
+          ? "No Data"
+          : String(suggestion.impact_score),
       classification: suggestion.classification,
       plain_english_summary: suggestion.plain_english_summary,
       scoringDecision: "approved",
@@ -171,12 +174,18 @@ export const Step3ScoreUnscored = ({
                   <span className="badge-purple rounded-full border px-2 py-0.5 text-xs capitalize">
                     {item.aiSuggestion.confidence}
                   </span>
-                  {item.aiSuggestion.confidence === "low" ? (
+                  {item.aiSuggestion.needs_human_review ||
+                  item.aiSuggestion.confidence === "low" ? (
                     <span className="ml-2 rounded-full border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
                       Needs review
                     </span>
                   ) : null}
                 </p>
+                {item.aiSuggestion.short_description ? (
+                  <p className="mt-2 text-muted-foreground">
+                    {item.aiSuggestion.short_description}
+                  </p>
+                ) : null}
                 <p className="mt-2 text-muted-foreground">{item.aiSuggestion.reasoning}</p>
                 <p className="mt-1 text-white">{item.aiSuggestion.plain_english_summary}</p>
                 <div className="mt-3 flex flex-wrap gap-2">

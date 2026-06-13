@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { callAdminApi } from "@/lib/admin-api";
+import { formatImpactScoreForDb } from "@/lib/ingredients-score-api";
+import { removeFlaggedIngredientsAfterApproval } from "@/lib/flagged-ingredients";
 import { requireAdmin } from "@/lib/users";
 import type { AiScoreSuggestion } from "@/types/admin.types";
 
@@ -170,7 +172,7 @@ export async function approveFlaggedIngredient(
   const { error: updateError } = await admin
     .from("ingredients")
     .update({
-      impact_score: String(suggestion.impact_score),
+      impact_score: formatImpactScoreForDb(suggestion.impact_score),
       classification: suggestion.classification,
       plain_english_summary: suggestion.plain_english_summary,
       notes: suggestion.reasoning,
@@ -182,13 +184,18 @@ export async function approveFlaggedIngredient(
     return { success: false, error: updateError.message };
   }
 
-  const { error: deleteError } = await admin
-    .from("flagged_ingredients")
-    .delete()
-    .eq("id", flaggedId);
-
-  if (deleteError) {
-    return { success: false, error: deleteError.message };
+  try {
+    await removeFlaggedIngredientsAfterApproval(admin, {
+      flaggedId: flagged.id,
+      inciName,
+      ingredientName: flagged.ingredient_name ?? undefined,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to remove flagged ingredient after approval";
+    return { success: false, error: message };
   }
 
   revalidatePath("/flagged-ingredients");

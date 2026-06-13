@@ -23,11 +23,14 @@ export type ImpactScore = -2 | -1 | 0 | 1 | 2;
 export type ConfidenceLevel = "high" | "medium" | "low";
 
 export type AiScoreSuggestion = {
-  impact_score: ImpactScore;
+  impact_score: ImpactScore | "No Data";
   confidence: ConfidenceLevel;
   reasoning: string;
   classification: string;
   plain_english_summary: string;
+  short_description?: string | null;
+  needs_human_review?: boolean;
+  flagged_id?: string | null;
 };
 
 export type ProductIngredientStatus = {

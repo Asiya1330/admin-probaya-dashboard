@@ -51,14 +51,15 @@ export const FlaggedIngredientReviewPanel = ({
     flagged.ingredient_name ?? flagged.inci_name ?? "Flagged ingredient";
 
   const handleScoreWithAI = async (): Promise<void> => {
-    const inciName = flagged.inci_name?.trim();
-    if (!inciName) {
-      toast.error("This flagged ingredient has no INCI name");
+    const ingredientName =
+      flagged.ingredient_name?.trim() || flagged.inci_name?.trim();
+    if (!ingredientName) {
+      toast.error("This flagged ingredient has no name to score");
       return;
     }
 
     setIsScoring(true);
-    const response = await scoreIngredientWithAI(inciName);
+    const response = await scoreIngredientWithAI(ingredientName);
     setIsScoring(false);
 
     if (!response.success) {
@@ -67,6 +68,7 @@ export const FlaggedIngredientReviewPanel = ({
     }
 
     setSuggestion(response.data);
+    router.refresh();
   };
 
   const handleApprove = async (edited?: AiScoreSuggestion): Promise<void> => {

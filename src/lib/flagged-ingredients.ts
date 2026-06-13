@@ -128,3 +128,77 @@ export const getPendingFlaggedIngredientsCount = async (): Promise<number> => {
 
   return count ?? 0;
 };
+
+type SupabaseAdminClient = Awaited<
+  ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>
+>;
+
+type RemoveFlaggedIngredientsOptions = {
+  flaggedId?: string | null;
+  inciName?: string;
+  ingredientName?: string;
+};
+
+export const removeFlaggedIngredientsAfterApproval = async (
+  admin: SupabaseAdminClient,
+  options: RemoveFlaggedIngredientsOptions,
+): Promise<void> => {
+  const idsToDelete = new Set<string>();
+
+  if (options.flaggedId) {
+    const { data } = await admin
+      .from("flagged_ingredients")
+      .select("id")
+      .eq("id", options.flaggedId)
+      .maybeSingle();
+
+    if (data) {
+      idsToDelete.add(data.id);
+    }
+  }
+
+  const inciName = options.inciName?.trim();
+  if (inciName) {
+    const { data, error } = await admin
+      .from("flagged_ingredients")
+      .select("id")
+      .eq("inci_name", inciName);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    for (const row of data ?? []) {
+      idsToDelete.add(row.id);
+    }
+  }
+
+  const ingredientName = options.ingredientName?.trim();
+  if (ingredientName) {
+    const { data, error } = await admin
+      .from("flagged_ingredients")
+      .select("id")
+      .eq("ingredient_name", ingredientName);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    for (const row of data ?? []) {
+      idsToDelete.add(row.id);
+    }
+  }
+
+  if (idsToDelete.size === 0) {
+    return;
+  }
+
+  const { error: deleteError } = await admin
+    .from("flagged_ingredients")
+    .delete()
+    .in("id", [...idsToDelete]);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+};
