@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { FallbackImage } from "@/components/shared/FallbackImage";
 import { PageToolbar } from "@/components/shared/PageToolbar";
+import { ScoreAllProductsButton } from "@/components/products/ScoreAllProductsButton";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -91,6 +92,7 @@ export const ProductsTable = ({
         resourceLabel="Products"
         addHref="/products/new"
         addLabel="Add Product"
+        extraActions={<ScoreAllProductsButton />}
         selectFilters={[
           {
             paramKey: "category",

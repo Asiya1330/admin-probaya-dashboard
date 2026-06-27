@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { callAdminApi } from "@/lib/admin-api";
 import { parseIngredientsList } from "@/lib/ingredients";
 import {
   calculateProductScore,
@@ -177,6 +178,139 @@ export async function saveProductScore(
     success: true,
     data: { score: result.score, rating: result.rating },
   };
+}
+
+export type ScoreAllProductsFailure = {
+  product_id: string;
+  error: string;
+};
+
+export type ScoreAllProductsResult = {
+  message: string;
+  total_products?: number;
+  scored?: number;
+  unscored?: number;
+  updated?: number;
+  unchanged?: number;
+  failures?: ScoreAllProductsFailure[];
+};
+
+const unwrapScoreAllPayload = (data: unknown): Record<string, unknown> | null => {
+  if (typeof data !== "object" || data === null) {
+    return null;
+  }
+
+  const record = data as Record<string, unknown>;
+  if (
+    "data" in record &&
+    typeof record.data === "object" &&
+    record.data !== null
+  ) {
+    return record.data as Record<string, unknown>;
+  }
+
+  return record;
+};
+
+const parseScoreAllProductsResponse = (data: unknown): ScoreAllProductsResult => {
+  const payload = unwrapScoreAllPayload(data);
+
+  if (!payload) {
+    return { message: "Product scores recalculated" };
+  }
+
+  const total_products =
+    typeof payload.total_products === "number" ? payload.total_products : undefined;
+  const scored = typeof payload.scored === "number" ? payload.scored : undefined;
+  const unscored =
+    typeof payload.unscored === "number" ? payload.unscored : undefined;
+  const updated = typeof payload.updated === "number" ? payload.updated : undefined;
+  const unchanged =
+    typeof payload.unchanged === "number" ? payload.unchanged : undefined;
+
+  const failures = Array.isArray(payload.failures)
+    ? payload.failures
+        .filter(
+          (item): item is ScoreAllProductsFailure =>
+            typeof item === "object" &&
+            item !== null &&
+            "product_id" in item &&
+            "error" in item &&
+            typeof (item as ScoreAllProductsFailure).product_id === "string" &&
+            typeof (item as ScoreAllProductsFailure).error === "string",
+        )
+    : [];
+
+  if (typeof payload.message === "string") {
+    return {
+      message: payload.message,
+      total_products,
+      scored,
+      unscored,
+      updated,
+      unchanged,
+      failures,
+    };
+  }
+
+  const parts: string[] = [];
+  if (updated !== undefined) {
+    parts.push(`${updated} updated`);
+  }
+  if (unchanged !== undefined) {
+    parts.push(`${unchanged} unchanged`);
+  }
+  if (unscored !== undefined) {
+    parts.push(`${unscored} skipped (no scorable ingredients)`);
+  }
+  if (failures.length > 0) {
+    parts.push(`${failures.length} failed`);
+  }
+
+  const summary =
+    parts.length > 0
+      ? parts.join(", ")
+      : "Product scores recalculated across the catalog";
+
+  const prefix =
+    total_products !== undefined
+      ? `Processed ${total_products} product${total_products === 1 ? "" : "s"}`
+      : scored !== undefined
+        ? `Scored ${scored} product${scored === 1 ? "" : "s"}`
+        : "Score all complete";
+
+  return {
+    message: `${prefix}: ${summary}`,
+    total_products,
+    scored,
+    unscored,
+    updated,
+    unchanged,
+    failures,
+  };
+};
+
+export async function scoreAllProducts(): Promise<
+  ActionResult<ScoreAllProductsResult>
+> {
+  const auth = await requireAdmin();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
+
+  const result = await callAdminApi({
+    resource: "products",
+    action: "score-all",
+  });
+
+  if (!result.ok) {
+    return { success: false, error: result.error };
+  }
+
+  revalidatePath("/products");
+  revalidatePath("/");
+
+  return { success: true, data: parseScoreAllProductsResponse(result.data) };
 }
 
 const linkProductIngredients = async (
