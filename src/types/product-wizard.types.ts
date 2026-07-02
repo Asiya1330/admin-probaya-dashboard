@@ -7,6 +7,9 @@ export const WIZARD_CATEGORIES = [
   "cup",
   "period underwear",
   "wash",
+  "wipe",
+  "lubricant",
+  "condom",
   "other",
 ] as const;
 
@@ -63,6 +66,7 @@ export type WizardIngredient = {
   expanded?: boolean;
   scoringDecision?: ScoringDecision;
   aiSuggestion?: AiScoreSuggestion | null;
+  scoringError?: string | null;
   isScoring?: boolean;
 };
 

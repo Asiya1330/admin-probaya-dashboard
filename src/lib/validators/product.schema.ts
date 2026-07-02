@@ -10,6 +10,8 @@ export const PRODUCT_CATEGORIES = [
   "cup",
   "lubricant",
   "period underwear",
+  "wipe",
+  "condom",
 ] as const;
 
 export const productFormSchema = z.object({

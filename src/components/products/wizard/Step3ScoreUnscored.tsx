@@ -2,11 +2,13 @@
 
 import { Check, Sparkles } from "lucide-react";
 import type { JSX } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import {
   approveIngredientScore,
   scoreIngredientWithAI,
+  scoreIngredientsWithAI,
 } from "@/actions/scoring.actions";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { Button } from "@/components/ui/button";
@@ -19,31 +21,75 @@ type Step3ScoreUnscoredProps = {
   onChange: (ingredients: WizardIngredient[]) => void;
 };
 
+const matchResultToItem = (
+  item: WizardIngredient,
+  requestName: string,
+): boolean => {
+  const lowerRequest = requestName.toLowerCase();
+  return (
+    item.inci_name.toLowerCase() === lowerRequest ||
+    item.ingredient_name.toLowerCase() === lowerRequest
+  );
+};
+
 export const Step3ScoreUnscored = ({
   ingredients,
   onChange,
 }: Step3ScoreUnscoredProps): JSX.Element => {
-  const unscored = ingredients.filter((i) => i.category === "unscored");
+  const ingredientsRef = useRef(ingredients);
 
-  const updateItem = (id: string, patch: Partial<WizardIngredient>): void => {
-    onChange(
-      ingredients.map((item) =>
-        item.id === id ? { ...item, ...patch } : item,
-      ),
-    );
+  useEffect(() => {
+    ingredientsRef.current = ingredients;
+  }, [ingredients]);
+
+  const replaceIngredients = (
+    updater: (items: WizardIngredient[]) => WizardIngredient[],
+  ): void => {
+    onChange(updater(ingredientsRef.current));
   };
 
+  const unscored = ingredients.filter((i) => i.category === "unscored");
+  const isScoringAny = unscored.some((item) => item.isScoring);
+
   const handleScoreWithAI = async (item: WizardIngredient): Promise<void> => {
-    updateItem(item.id, { isScoring: true, aiSuggestion: null });
+    replaceIngredients((items) =>
+      items.map((entry) =>
+        entry.id === item.id
+          ? {
+              ...entry,
+              isScoring: true,
+              aiSuggestion: null,
+              scoringError: null,
+            }
+          : entry,
+      ),
+    );
+
     const result = await scoreIngredientWithAI(item.inci_name);
-    updateItem(item.id, { isScoring: false });
 
-    if (!result.success) {
-      toast.error(result.error);
-      return;
-    }
+    replaceIngredients((items) =>
+      items.map((entry) => {
+        if (entry.id !== item.id) {
+          return entry;
+        }
 
-    updateItem(item.id, { aiSuggestion: result.data });
+        if (!result.success) {
+          return {
+            ...entry,
+            isScoring: false,
+            aiSuggestion: null,
+            scoringError: result.error,
+          };
+        }
+
+        return {
+          ...entry,
+          isScoring: false,
+          aiSuggestion: result.data,
+          scoringError: null,
+        };
+      }),
+    );
   };
 
   const handleApprove = async (
@@ -63,33 +109,113 @@ export const Step3ScoreUnscored = ({
       return;
     }
 
-    updateItem(item.id, {
-      category: "scored",
-      ingredient_id: result.data.ingredient_id,
-      impact_score:
-        suggestion.impact_score === "No Data"
-          ? "No Data"
-          : String(suggestion.impact_score),
-      classification: suggestion.classification,
-      plain_english_summary: suggestion.plain_english_summary,
-      scoringDecision: "approved",
-      aiSuggestion: null,
-    });
+    replaceIngredients((items) =>
+      items.map((entry) =>
+        entry.id === item.id
+          ? {
+              ...entry,
+              category: "scored",
+              ingredient_id: result.data.ingredient_id,
+              impact_score:
+                suggestion.impact_score === "No Data"
+                  ? "No Data"
+                  : String(suggestion.impact_score),
+              classification: suggestion.classification,
+              plain_english_summary: suggestion.plain_english_summary,
+              scoringDecision: "approved",
+              aiSuggestion: null,
+              scoringError: null,
+            }
+          : entry,
+      ),
+    );
     toast.success(`"${item.ingredient_name}" scored`);
   };
 
   const handleSkip = (item: WizardIngredient): void => {
-    updateItem(item.id, {
-      scoringDecision: "skipped",
-      aiSuggestion: null,
-    });
+    replaceIngredients((items) =>
+      items.map((entry) =>
+        entry.id === item.id
+          ? {
+              ...entry,
+              scoringDecision: "skipped",
+              aiSuggestion: null,
+              scoringError: null,
+            }
+          : entry,
+      ),
+    );
   };
 
   const handleScoreAll = async (): Promise<void> => {
-    for (const item of unscored) {
-      if (item.scoringDecision) continue;
-      await handleScoreWithAI(item);
+    const toScore = unscored.filter((item) => !item.scoringDecision);
+    if (toScore.length === 0) {
+      return;
     }
+
+    replaceIngredients((items) =>
+      items.map((entry) =>
+        toScore.some((item) => item.id === entry.id)
+          ? {
+              ...entry,
+              isScoring: true,
+              aiSuggestion: null,
+              scoringError: null,
+            }
+          : entry,
+      ),
+    );
+
+    const result = await scoreIngredientsWithAI(
+      toScore.map((item) => item.inci_name),
+    );
+
+    if (!result.success) {
+      replaceIngredients((items) =>
+        items.map((entry) =>
+          toScore.some((item) => item.id === entry.id)
+            ? {
+                ...entry,
+                isScoring: false,
+                aiSuggestion: null,
+                scoringError: result.error,
+              }
+            : entry,
+        ),
+      );
+      return;
+    }
+
+    replaceIngredients((items) =>
+      items.map((entry) => {
+        const pendingItem = toScore.find((item) => item.id === entry.id);
+        if (!pendingItem) {
+          return entry;
+        }
+
+        const itemResult = result.data.find((row) =>
+          matchResultToItem(pendingItem, row.requestName),
+        );
+
+        if (!itemResult?.success || !itemResult.suggestion) {
+          return {
+            ...entry,
+            isScoring: false,
+            aiSuggestion: null,
+            scoringError:
+              itemResult?.error ??
+              "Claude failed for this ingredient. Either the ingredient does not exist or the scoring system is down.",
+          };
+        }
+
+        return {
+          ...entry,
+          isScoring: false,
+          aiSuggestion: itemResult.suggestion,
+          scoringError: null,
+        };
+      }),
+    );
   };
 
   const allDecided = unscored.every((item) => item.scoringDecision !== null);
@@ -106,10 +232,20 @@ export const Step3ScoreUnscored = ({
           type="button"
           size="sm"
           className="shrink-0 bg-[#8b5cf6] hover:bg-[#7c3aed]"
+          disabled={isScoringAny}
           onClick={() => void handleScoreAll()}
         >
-          <Sparkles className="size-4" />
-          Score all with AI
+          {isScoringAny ? (
+            <>
+              <LoadingSpinner />
+              Scoring…
+            </>
+          ) : (
+            <>
+              <Sparkles className="size-4" />
+              Score all with AI
+            </>
+          )}
         </Button>
       </div>
 
@@ -144,7 +280,7 @@ export const Step3ScoreUnscored = ({
                   type="button"
                   size="sm"
                   className="bg-[#8b5cf6] hover:bg-[#7c3aed]"
-                  disabled={item.isScoring}
+                  disabled={item.isScoring || isScoringAny}
                   onClick={() => void handleScoreWithAI(item)}
                 >
                   {item.isScoring ? (
@@ -161,6 +297,32 @@ export const Step3ScoreUnscored = ({
                 </Button>
               ) : null}
             </div>
+
+            {item.scoringError ? (
+              <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+                <p>{item.scoringError}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-[#8b5cf6] hover:bg-[#7c3aed]"
+                    disabled={isScoringAny}
+                    onClick={() => void handleScoreWithAI(item)}
+                  >
+                    <Sparkles className="size-4" />
+                    Retry
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleSkip(item)}
+                  >
+                    Skip
+                  </Button>
+                </div>
+              </div>
+            ) : null}
 
             {item.aiSuggestion ? (
               <div className="mt-4 rounded-lg border border-[#8b5cf6]/30 bg-[#8b5cf6]/10 p-4 text-sm">
