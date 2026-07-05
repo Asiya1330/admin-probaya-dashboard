@@ -204,7 +204,9 @@ export const Step3ScoreUnscored = ({
             aiSuggestion: null,
             scoringError:
               itemResult?.error ??
+              itemResult?.failureReason ??
               "Claude failed for this ingredient. Either the ingredient does not exist or the scoring system is down.",
+            claudeResponse: itemResult?.claudeResponse ?? null,
           };
         }
 
@@ -213,6 +215,7 @@ export const Step3ScoreUnscored = ({
           isScoring: false,
           aiSuggestion: itemResult.suggestion,
           scoringError: null,
+          claudeResponse: null,
         };
       }),
     );
@@ -301,6 +304,16 @@ export const Step3ScoreUnscored = ({
             {item.scoringError ? (
               <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
                 <p>{item.scoringError}</p>
+                {item.claudeResponse ? (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs text-red-400 hover:text-red-300">
+                      Show Claude response
+                    </summary>
+                    <pre className="mt-2 max-h-48 overflow-auto rounded bg-black/30 p-2 text-xs text-red-200/80">
+                      {JSON.stringify(item.claudeResponse, null, 2)}
+                    </pre>
+                  </details>
+                ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button
                     type="button"

@@ -67,6 +67,7 @@ export type WizardIngredient = {
   scoringDecision?: ScoringDecision;
   aiSuggestion?: AiScoreSuggestion | null;
   scoringError?: string | null;
+  claudeResponse?: Record<string, unknown> | null;
   isScoring?: boolean;
 };
 

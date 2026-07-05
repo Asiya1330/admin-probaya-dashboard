@@ -59,6 +59,8 @@ export type IngredientScoreRequestResult = {
   error?: string;
   /** Set when the API returned `success: false` but included `claude_response` data. */
   failureReason?: string;
+  /** Raw claude_response object from the API when scoring failed for this ingredient. */
+  claudeResponse?: Record<string, unknown>;
 };
 
 export const INGREDIENT_SCORE_FAILURE_MESSAGE =
@@ -203,6 +205,7 @@ const matchApiItemsToRequests = (
           !rawItem.success && rawItem.reason
             ? rawItem.reason
             : INGREDIENT_SCORE_FAILURE_MESSAGE,
+        claudeResponse: !rawItem.success ? rawItem.claude_response as Record<string, unknown> : undefined,
       };
     }
 
@@ -212,6 +215,7 @@ const matchApiItemsToRequests = (
         success: false,
         suggestion: mapIngredientsScoreItemToSuggestion(resolved),
         failureReason: rawItem.reason ?? INGREDIENT_SCORE_FAILURE_MESSAGE,
+        claudeResponse: rawItem.claude_response as Record<string, unknown>,
       };
     }
 

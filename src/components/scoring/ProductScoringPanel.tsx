@@ -34,11 +34,9 @@ export const ProductScoringPanel = ({
   const [loadingInci, setLoadingInci] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
-  const [suggestion, setSuggestion] = useState<{
-    inciName: string;
-    ingredientName: string;
-    data: AiScoreSuggestion;
-  } | null>(null);
+  const [suggestions, setSuggestions] = useState<
+    Record<string, { ingredientName: string; data: AiScoreSuggestion }>
+  >({});
   const [scoreResult, setScoreResult] = useState<ProductScoreResult | null>(
     null,
   );
@@ -56,18 +54,23 @@ export const ProductScoringPanel = ({
       return;
     }
 
-    setSuggestion({ inciName, ingredientName, data: result.data });
+    setSuggestions((prev) => ({
+      ...prev,
+      [inciName]: { ingredientName, data: result.data },
+    }));
   };
 
   const handleApprove = async (
+    inciName: string,
     edited?: AiScoreSuggestion,
   ): Promise<void> => {
+    const suggestion = suggestions[inciName];
     if (!suggestion) return;
 
     setIsApproving(true);
     const data = edited ?? suggestion.data;
     const result = await approveIngredientScore(
-      suggestion.inciName,
+      inciName,
       suggestion.ingredientName,
       data,
     );
@@ -80,7 +83,7 @@ export const ProductScoringPanel = ({
 
     setStatuses((prev) =>
       prev.map((item) =>
-        item.inci_name === suggestion.inciName
+        item.inci_name === inciName
           ? {
               ...item,
               scored: true,
@@ -92,7 +95,11 @@ export const ProductScoringPanel = ({
           : item,
       ),
     );
-    setSuggestion(null);
+    setSuggestions((prev) => {
+      const next = { ...prev };
+      delete next[inciName];
+      return next;
+    });
     toast.success("Ingredient score approved");
   };
 
@@ -153,46 +160,73 @@ export const ProductScoringPanel = ({
               Add ingredients to this product to begin scoring.
             </p>
           ) : (
-            statuses.map((status) => (
-              <div
-                key={status.inci_name}
-                className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-white">{status.ingredient_name}</p>
-                  <p className="text-xs text-muted-foreground">{status.inci_name}</p>
-                  {status.scored ? (
-                    <p className="mt-1 text-sm text-[#86efac]">
-                      Score: {status.impact_score} · {status.classification}
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-sm text-amber-300">Unscored</p>
-                  )}
+            statuses.map((status) => {
+              const suggestion = suggestions[status.inci_name];
+              return (
+                <div
+                  key={status.inci_name}
+                  className="rounded-lg border border-border bg-background p-4"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium text-white">{status.ingredient_name}</p>
+                      <p className="text-xs text-muted-foreground">{status.inci_name}</p>
+                      {status.scored ? (
+                        <p className="mt-1 text-sm text-[#86efac]">
+                          Score: {status.impact_score} · {status.classification}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-sm text-amber-300">Unscored</p>
+                      )}
+                    </div>
+                    {!status.scored ? (
+                      <Button
+                        size="sm"
+                        className="bg-[#8b5cf6] hover:bg-[#7c3aed]"
+                        disabled={loadingInci === status.inci_name || isApproving}
+                        onClick={(): void => {
+                          void handleScoreWithAI(status.inci_name, status.ingredient_name);
+                        }}
+                      >
+                        {loadingInci === status.inci_name ? (
+                          <>
+                            <LoadingSpinner />
+                            Scoring...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="size-4" />
+                            Score with AI
+                          </>
+                        )}
+                      </Button>
+                    ) : null}
+                  </div>
+                  {suggestion ? (
+                    <div className="mt-3">
+                      <AiScoreSuggestionCard
+                        ingredientName={suggestion.ingredientName}
+                        suggestion={suggestion.data}
+                        isPending={isApproving}
+                        onApprove={(): void => {
+                          void handleApprove(status.inci_name);
+                        }}
+                        onReject={(): void =>
+                          setSuggestions((prev) => {
+                            const next = { ...prev };
+                            delete next[status.inci_name];
+                            return next;
+                          })
+                        }
+                        onEdit={(edited): void => {
+                          void handleApprove(status.inci_name, edited);
+                        }}
+                      />
+                    </div>
+                  ) : null}
                 </div>
-                {!status.scored ? (
-                  <Button
-                    size="sm"
-                    className="bg-[#8b5cf6] hover:bg-[#7c3aed]"
-                    disabled={loadingInci === status.inci_name || isApproving}
-                    onClick={(): void => {
-                      void handleScoreWithAI(status.inci_name, status.ingredient_name);
-                    }}
-                  >
-                    {loadingInci === status.inci_name ? (
-                      <>
-                        <LoadingSpinner />
-                        Scoring...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="size-4" />
-                        Score with AI
-                      </>
-                    )}
-                  </Button>
-                ) : null}
-              </div>
-            ))
+              );
+            })
           )}
         </div>
         {statuses.length > 0 ? (
@@ -216,21 +250,6 @@ export const ProductScoringPanel = ({
           </div>
         ) : null}
       </div>
-
-      {suggestion ? (
-        <AiScoreSuggestionCard
-          ingredientName={suggestion.ingredientName}
-          suggestion={suggestion.data}
-          isPending={isApproving}
-          onApprove={(): void => {
-            void handleApprove();
-          }}
-          onReject={(): void => setSuggestion(null)}
-          onEdit={(edited): void => {
-            void handleApprove(edited);
-          }}
-        />
-      ) : null}
 
       {scoreResult ? <ScoreBreakdown result={scoreResult} /> : null}
     </div>
