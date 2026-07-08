@@ -128,6 +128,7 @@ export const SubmissionsTable = ({
                 <TableHead>Preview</TableHead>
                 <TableHead>Product</TableHead>
                 <TableHead>Brand</TableHead>
+                <TableHead className="text-right">Scans</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -136,7 +137,7 @@ export const SubmissionsTable = ({
             <TableBody>
               {result.data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                     No submissions found.
                   </TableCell>
                 </TableRow>
@@ -163,6 +164,9 @@ export const SubmissionsTable = ({
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {submission.brand}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {submission.scan_count ?? 0}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {submission.submitted_at
