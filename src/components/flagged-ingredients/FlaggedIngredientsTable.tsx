@@ -1,9 +1,13 @@
 "use client";
 
-import { Eye } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye } from "lucide-react";
 import Link from "next/link";
-import { type JSX } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState, useTransition, type JSX } from "react";
+import { toast } from "sonner";
 
+import { getFlaggedIngredientLinkedProducts } from "@/actions/flagged-ingredients.actions";
+import { AttachedProductsModal } from "@/components/flagged-ingredients/AttachedProductsModal";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { PageToolbar } from "@/components/shared/PageToolbar";
 import { SyncNoDataFlaggedButton } from "@/components/flagged-ingredients/SyncNoDataFlaggedButton";
@@ -21,20 +25,93 @@ import type { PaginatedResult } from "@/lib/pagination";
 import type {
   FlaggedReviewFilter,
   FlaggedScoreFilter,
+  FlaggedSortField,
+  FlaggedSortOrder,
 } from "@/lib/filters/flagged-ingredients-filters";
-import type { FlaggedIngredient } from "@/types/admin.types";
+import type {
+  FlaggedIngredient,
+  FlaggedIngredientProductLink,
+} from "@/types/admin.types";
+import { cn } from "@/lib/utils";
 
 type FlaggedIngredientsTableProps = {
   result: PaginatedResult<FlaggedIngredient>;
   reviewFilter: FlaggedReviewFilter;
   scoreFilter: FlaggedScoreFilter;
+  sortField: FlaggedSortField;
+  sortOrder: FlaggedSortOrder;
+};
+
+type SelectedIngredient = {
+  ingredientName: string | null;
 };
 
 export const FlaggedIngredientsTable = ({
   result,
   reviewFilter,
   scoreFilter,
+  sortField,
+  sortOrder,
 }: FlaggedIngredientsTableProps): JSX.Element => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+  const [selectedIngredient, setSelectedIngredient] =
+    useState<SelectedIngredient | null>(null);
+  const [linkedProducts, setLinkedProducts] = useState<
+    FlaggedIngredientProductLink[]
+  >([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+
+  const handleOpenProducts = (flagged: FlaggedIngredient): void => {
+    setSelectedIngredient({ ingredientName: flagged.ingredient_name });
+    setLinkedProducts([]);
+    setIsLoadingProducts(true);
+
+    void getFlaggedIngredientLinkedProducts(flagged.product_ids).then(
+      (response) => {
+        setIsLoadingProducts(false);
+        if (!response.success) {
+          toast.error(response.error);
+          return;
+        }
+        setLinkedProducts(response.data);
+      },
+    );
+  };
+
+  const handleCloseProducts = (): void => {
+    setSelectedIngredient(null);
+    setLinkedProducts([]);
+    setIsLoadingProducts(false);
+  };
+
+  const handleSortProducts = (): void => {
+    const params = new URLSearchParams(searchParams.toString());
+    const nextOrder =
+      sortField === "products" && sortOrder === "desc" ? "asc" : "desc";
+
+    params.set("sort", "products");
+    params.set("order", nextOrder);
+    params.set("page", "1");
+
+    startTransition((): void => {
+      router.push(`${pathname}?${params.toString()}`);
+    });
+  };
+
+  const productsSortIcon =
+    sortField === "products" ? (
+      sortOrder === "desc" ? (
+        <ArrowDown className="size-3.5" />
+      ) : (
+        <ArrowUp className="size-3.5" />
+      )
+    ) : (
+      <ArrowUpDown className="size-3.5 opacity-50" />
+    );
+
   return (
     <div className="flex flex-1 flex-col gap-6 overflow-auto p-4 md:p-8">
       <PageToolbar
@@ -79,7 +156,22 @@ export const FlaggedIngredientsTable = ({
             <TableRow className="border-border hover:bg-transparent">
               <TableHead>Ingredient</TableHead>
               <TableHead>INCI Name</TableHead>
-              <TableHead>Products</TableHead>
+              <TableHead>
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex cursor-pointer items-center gap-1 font-medium transition-colors hover:text-foreground",
+                    sortField === "products"
+                      ? "text-foreground"
+                      : "text-muted-foreground",
+                  )}
+                  disabled={isPending}
+                  onClick={handleSortProducts}
+                >
+                  Products
+                  {productsSortIcon}
+                </button>
+              </TableHead>
               <TableHead>Flagged</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -110,7 +202,13 @@ export const FlaggedIngredientsTable = ({
                     {flagged.inci_name ?? "—"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {flagged.product_ids?.length ?? 0}
+                    <button
+                      type="button"
+                      className="cursor-pointer rounded-full px-2 py-0.5 font-medium text-foreground transition-colors hover:bg-[#8b5cf6]/15 hover:text-[#c4b5fd]"
+                      onClick={(): void => handleOpenProducts(flagged)}
+                    >
+                      {flagged.product_ids?.length ?? 0}
+                    </button>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatUserDate(flagged.flagged_at)}
@@ -145,6 +243,18 @@ export const FlaggedIngredientsTable = ({
         total={result.total}
         pageSize={result.pageSize}
         totalPages={result.totalPages}
+      />
+
+      <AttachedProductsModal
+        open={selectedIngredient !== null}
+        ingredientName={selectedIngredient?.ingredientName ?? null}
+        products={linkedProducts}
+        isLoading={isLoadingProducts}
+        onOpenChange={(open): void => {
+          if (!open) {
+            handleCloseProducts();
+          }
+        }}
       />
     </div>
   );

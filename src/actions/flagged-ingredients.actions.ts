@@ -4,13 +4,38 @@ import { revalidatePath } from "next/cache";
 
 import { callAdminApi } from "@/lib/admin-api";
 import { formatImpactScoreForDb } from "@/lib/ingredients-score-api";
-import { removeFlaggedIngredientsAfterApproval } from "@/lib/flagged-ingredients";
+import {
+  getLinkedProductsForFlagged,
+  removeFlaggedIngredientsAfterApproval,
+} from "@/lib/flagged-ingredients";
 import { requireAdmin } from "@/lib/users";
-import type { AiScoreSuggestion } from "@/types/admin.types";
+import type {
+  AiScoreSuggestion,
+  FlaggedIngredientProductLink,
+} from "@/types/admin.types";
 
 export type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string };
+
+export async function getFlaggedIngredientLinkedProducts(
+  productIds: string[] | null,
+): Promise<ActionResult<FlaggedIngredientProductLink[]>> {
+  const auth = await requireAdmin();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
+
+  try {
+    const products = await getLinkedProductsForFlagged(productIds);
+    return { success: true, data: products };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to load products",
+    };
+  }
+}
 
 export type SyncNoDataFlaggedResult = {
   message: string;

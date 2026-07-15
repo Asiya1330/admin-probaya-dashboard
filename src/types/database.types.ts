@@ -336,14 +336,20 @@ export type Database = {
         Row: {
           id: string
           role: string | null
+          address: string | null
+          phone_number: string | null
         }
         Insert: {
           id: string
           role?: string | null
+          address?: string | null
+          phone_number?: string | null
         }
         Update: {
           id?: string
           role?: string | null
+          address?: string | null
+          phone_number?: string | null
         }
         Relationships: []
       }
@@ -616,6 +622,8 @@ export type UserRole = "admin" | "user";
 export type UserWithProfile = {
   id: string;
   email: string;
+  address: string;
+  phone_number: string;
   created_at: string;
   role: UserRole;
 };

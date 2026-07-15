@@ -9,6 +9,8 @@ import { requireAdmin } from "@/lib/users";
 import type {
   FlaggedReviewFilter,
   FlaggedScoreFilter,
+  FlaggedSortField,
+  FlaggedSortOrder,
 } from "@/lib/filters/flagged-ingredients-filters";
 import type { FlaggedIngredient, FlaggedIngredientProductLink } from "@/types/admin.types";
 
@@ -18,13 +20,36 @@ export {
   FLAGGED_SCORE_FILTERS,
   parseFlaggedReviewFilter,
   parseFlaggedScoreFilter,
+  parseFlaggedSortField,
+  parseFlaggedSortOrder,
 } from "@/lib/filters/flagged-ingredients-filters";
+
+const sortByProductCount = (
+  ingredients: FlaggedIngredient[],
+  sortOrder: FlaggedSortOrder,
+): FlaggedIngredient[] => {
+  const direction = sortOrder === "asc" ? 1 : -1;
+
+  return [...ingredients].sort((left, right) => {
+    const countDiff =
+      (left.product_ids?.length ?? 0) - (right.product_ids?.length ?? 0);
+    if (countDiff !== 0) {
+      return countDiff * direction;
+    }
+    return (
+      new Date(right.flagged_at).getTime() -
+      new Date(left.flagged_at).getTime()
+    );
+  });
+};
 
 export const getFlaggedIngredientsPage = async (
   page: number,
   search?: string,
   reviewFilter: FlaggedReviewFilter = "all",
   scoreFilter: FlaggedScoreFilter = "all",
+  sortField: FlaggedSortField = "flagged_at",
+  sortOrder: FlaggedSortOrder = "desc",
 ): Promise<PaginatedResult<FlaggedIngredient>> => {
   await requireAdmin();
 
@@ -35,9 +60,7 @@ export const getFlaggedIngredientsPage = async (
   let query = admin
     .from("flagged_ingredients")
     .select("*", { count: "exact" })
-    .eq("status", "Pending")
-    .order("flagged_at", { ascending: false })
-    .range(from, to);
+    .eq("status", "Pending");
 
   if (reviewFilter === "needs_review") {
     query = query.eq("needs_human_review", true);
@@ -57,7 +80,29 @@ export const getFlaggedIngredientsPage = async (
     );
   }
 
-  const { data, count, error } = await query;
+  if (sortField === "products") {
+    // product count lives in the product_ids array, not a DB column, so it
+    // can't be sorted server-side — fetch all matches and sort in memory.
+    const { data, count, error } = await query.order("flagged_at", {
+      ascending: false,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const sorted = sortByProductCount(data ?? [], sortOrder);
+
+    return buildPaginatedResult(
+      sorted.slice(from, to + 1),
+      count ?? sorted.length,
+      page,
+    );
+  }
+
+  const { data, count, error } = await query
+    .order("flagged_at", { ascending: sortOrder === "asc" })
+    .range(from, to);
 
   if (error) {
     throw new Error(error.message);
@@ -101,7 +146,7 @@ export const getLinkedProductsForFlagged = async (
 
   const { data, error } = await admin
     .from("products")
-    .select("id, product_name, brand")
+    .select("id, product_name, brand, barcode, image_url")
     .in("id", productIds);
 
   if (error) {

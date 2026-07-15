@@ -53,4 +53,6 @@ export type FlaggedIngredientProductLink = {
   id: string;
   product_name: string | null;
   brand: string | null;
+  barcode: string | null;
+  image_url: string | null;
 };
