@@ -74,6 +74,8 @@ export const getUsersPage = async (
     id: user.id,
     email: user.email ?? "Unknown",
     created_at: user.created_at,
+    address: "",
+    phone_number: "",
     role: profileMap.get(user.id) ?? "user",
   }));
 
@@ -108,13 +110,15 @@ export const getUserById = async (
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("role")
+    .select("role, address, phone_number")
     .eq("id", userId)
     .single();
 
   return {
     id: data.user.id,
     email: data.user.email ?? "Unknown",
+    address: profile?.address ?? "",
+    phone_number: profile?.phone_number ?? "",
     created_at: data.user.created_at,
     role: (profile?.role as UserRole) ?? "user",
   };

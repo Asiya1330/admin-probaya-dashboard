@@ -59,7 +59,7 @@ export async function updateUserRole(
     .from("profiles")
     .update({ role: parsed.data.role })
     .eq("id", userId)
-    .select("id, role")
+    .select("id, role, address, phone_number")
     .single();
 
   if (error) {
