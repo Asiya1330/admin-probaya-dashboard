@@ -51,8 +51,12 @@ type DeleteTarget = {
 };
 
 const getClassificationClass = (classification: string | null): string => {
-  if (classification === "Beneficial") return "badge-green";
-  if (classification === "Harmful") return "border-red-500/30 bg-red-500/15 text-red-300";
+  if (classification === "Strongly Beneficial" || classification === "Beneficial") {
+    return "badge-green";
+  }
+  if (classification === "Strongly Harmful" || classification === "Harmful") {
+    return "border-red-500/30 bg-red-500/15 text-red-300";
+  }
   if (classification === "Neutral") return "badge-blue";
   return "badge-purple";
 };
@@ -171,9 +175,11 @@ export const IngredientsTable = ({
             placeholder: "Classification",
             options: [
               { value: "all", label: "All classifications" },
+              { value: "Strongly Beneficial", label: "Strongly Beneficial" },
               { value: "Beneficial", label: "Beneficial" },
-              { value: "Harmful", label: "Harmful" },
               { value: "Neutral", label: "Neutral" },
+              { value: "Harmful", label: "Harmful" },
+              { value: "Strongly Harmful", label: "Strongly Harmful" },
               { value: "unscored", label: "Unscored (No Data)" },
             ],
           },

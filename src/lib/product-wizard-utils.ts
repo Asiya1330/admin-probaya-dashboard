@@ -62,10 +62,10 @@ export const getScoreBadgeStyle = (
   if (num !== null && num < 0) {
     return "border-red-500/40 bg-red-500/15 text-red-300";
   }
-  if (classification === "Beneficial") {
+  if (classification === "Strongly Beneficial" || classification === "Beneficial") {
     return "border-[#22c55e]/40 bg-[#22c55e]/15 text-[#86efac]";
   }
-  if (classification === "Harmful") {
+  if (classification === "Strongly Harmful" || classification === "Harmful") {
     return "border-red-500/40 bg-red-500/15 text-red-300";
   }
   return "border-border bg-muted text-muted-foreground";

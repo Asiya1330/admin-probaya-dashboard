@@ -11,9 +11,11 @@ export type ProductScoreResult = {
   rating: "Microbiome Friendly" | "Use With Caution" | "Not Recommended";
   rawScore: number;
   counts: {
+    stronglyBeneficial: number;
     beneficial: number;
-    harmful: number;
     neutral: number;
+    harmful: number;
+    stronglyHarmful: number;
     noData: number;
   };
   ingredients: ScoredIngredient[];
@@ -58,10 +60,16 @@ export const calculateProductScore = (
     rating: getRating(normalized),
     rawScore,
     counts: {
+      stronglyBeneficial: ingredients.filter(
+        (i) => i.classification === "Strongly Beneficial",
+      ).length,
       beneficial: ingredients.filter((i) => i.classification === "Beneficial")
         .length,
-      harmful: ingredients.filter((i) => i.classification === "Harmful").length,
       neutral: ingredients.filter((i) => i.classification === "Neutral").length,
+      harmful: ingredients.filter((i) => i.classification === "Harmful").length,
+      stronglyHarmful: ingredients.filter(
+        (i) => i.classification === "Strongly Harmful",
+      ).length,
       noData: ingredients.filter((i) => i.classification === "No Data").length,
     },
     ingredients,

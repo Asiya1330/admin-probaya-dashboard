@@ -39,7 +39,14 @@ type IngredientSectionProps = {
   showExpandForm?: boolean;
 };
 
-const CLASSIFICATIONS = ["Beneficial", "Harmful", "Neutral", "No Data"] as const;
+const CLASSIFICATIONS = [
+  "Strongly Beneficial",
+  "Beneficial",
+  "Neutral",
+  "Harmful",
+  "Strongly Harmful",
+  "No Data",
+] as const;
 const IMPACT_SCORES = ["", "2", "1", "0", "-1", "-2"] as const;
 const EVIDENCE = ["Strong", "Moderate", "Weak"] as const;
 

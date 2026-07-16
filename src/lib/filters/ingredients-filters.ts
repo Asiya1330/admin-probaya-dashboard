@@ -1,7 +1,9 @@
 export const INGREDIENT_CLASSIFICATIONS = [
+  "Strongly Beneficial",
   "Beneficial",
-  "Harmful",
   "Neutral",
+  "Harmful",
+  "Strongly Harmful",
   "No Data",
 ] as const;
 
@@ -25,9 +27,11 @@ export const parseIngredientClassificationFilter = (
     return "unscored";
   }
   if (
+    value === "Strongly Beneficial" ||
     value === "Beneficial" ||
+    value === "Neutral" ||
     value === "Harmful" ||
-    value === "Neutral"
+    value === "Strongly Harmful"
   ) {
     return value;
   }

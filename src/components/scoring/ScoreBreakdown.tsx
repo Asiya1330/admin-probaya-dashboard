@@ -18,18 +18,26 @@ export const ScoreBreakdown = ({ result }: ScoreBreakdownProps): JSX.Element => 
           {result.rating}
         </span>
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-4">
+      <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="rounded-lg bg-background p-3">
+          <p className="text-xs text-muted-foreground">Strongly Beneficial</p>
+          <p className="text-xl font-semibold text-[#86efac]">{result.counts.stronglyBeneficial}</p>
+        </div>
         <div className="rounded-lg bg-background p-3">
           <p className="text-xs text-muted-foreground">Beneficial</p>
           <p className="text-xl font-semibold text-[#86efac]">{result.counts.beneficial}</p>
+        </div>
+        <div className="rounded-lg bg-background p-3">
+          <p className="text-xs text-muted-foreground">Neutral</p>
+          <p className="text-xl font-semibold text-[#93c5fd]">{result.counts.neutral}</p>
         </div>
         <div className="rounded-lg bg-background p-3">
           <p className="text-xs text-muted-foreground">Harmful</p>
           <p className="text-xl font-semibold text-red-300">{result.counts.harmful}</p>
         </div>
         <div className="rounded-lg bg-background p-3">
-          <p className="text-xs text-muted-foreground">Neutral</p>
-          <p className="text-xl font-semibold text-[#93c5fd]">{result.counts.neutral}</p>
+          <p className="text-xs text-muted-foreground">Strongly Harmful</p>
+          <p className="text-xl font-semibold text-red-300">{result.counts.stronglyHarmful}</p>
         </div>
         <div className="rounded-lg bg-background p-3">
           <p className="text-xs text-muted-foreground">No Data</p>

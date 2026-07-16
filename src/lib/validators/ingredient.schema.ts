@@ -3,9 +3,11 @@ import { z } from "zod";
 export const IMPACT_SCORES = ["-2", "-1", "0", "1", "2"] as const;
 
 export const INGREDIENT_CLASSIFICATIONS = [
+  "Strongly Beneficial",
   "Beneficial",
-  "Harmful",
   "Neutral",
+  "Harmful",
+  "Strongly Harmful",
   "No Data",
 ] as const;
 
