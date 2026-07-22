@@ -1,12 +1,17 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition, type JSX } from "react";
+import { useState, useTransition, type JSX } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { createProduct, updateProduct } from "@/actions/products.actions";
+import {
+  createProduct,
+  generateProductSummaries,
+  updateProduct,
+} from "@/actions/products.actions";
 import { FormFieldError } from "@/components/shared/FormFieldError";
 import { ImageUrlField } from "@/components/shared/ImageUrlField";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
@@ -42,9 +47,16 @@ const isProductCategory = (
 ): value is (typeof PRODUCT_CATEGORIES)[number] =>
   Boolean(value && PRODUCT_CATEGORIES.includes(value as (typeof PRODUCT_CATEGORIES)[number]));
 
+const textareaClassName = (hasError: boolean): string =>
+  fieldClassName(
+    hasError,
+    "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+  );
+
 export const ProductForm = ({ product }: ProductFormProps): JSX.Element => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const form = useForm<ProductFormInput>({
     resolver: zodResolver(productFormSchema),
@@ -55,6 +67,8 @@ export const ProductForm = ({ product }: ProductFormProps): JSX.Element => {
       category: isProductCategory(product?.category) ? product.category : undefined,
       image_url: product?.image_url ?? "",
       ingredients_list: product?.ingredients_list ?? "",
+      score_summary: product?.score_summary ?? "",
+      short_description: product?.short_description ?? "",
     },
   });
 
@@ -75,6 +89,8 @@ export const ProductForm = ({ product }: ProductFormProps): JSX.Element => {
       category: values.category,
       image_url: values.image_url,
       ingredients_list: values.ingredients_list,
+      score_summary: values.score_summary?.trim() || null,
+      short_description: values.short_description?.trim() || null,
     };
 
     startTransition(async (): Promise<void> => {
@@ -92,6 +108,32 @@ export const ProductForm = ({ product }: ProductFormProps): JSX.Element => {
       router.refresh();
     });
   });
+
+  const handleGenerateSummaries = (): void => {
+    if (!product) return;
+
+    setIsGenerating(true);
+    void generateProductSummaries(product.id).then((response) => {
+      setIsGenerating(false);
+
+      if (!response.success) {
+        toast.error(response.error);
+        return;
+      }
+
+      form.setValue(
+        "score_summary",
+        response.data.score_summary ?? "",
+        { shouldDirty: true },
+      );
+      form.setValue(
+        "short_description",
+        response.data.short_description ?? "",
+        { shouldDirty: true },
+      );
+      toast.success(response.data.message);
+    });
+  };
 
   const {
     register,
@@ -183,17 +225,83 @@ export const ProductForm = ({ product }: ProductFormProps): JSX.Element => {
           id="ingredients_list"
           rows={4}
           aria-invalid={Boolean(errors.ingredients_list)}
-          className={fieldClassName(
-            Boolean(errors.ingredients_list),
-            "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-          )}
+          className={textareaClassName(Boolean(errors.ingredients_list))}
           {...register("ingredients_list")}
         />
         <FormFieldError message={errors.ingredients_list?.message} />
       </div>
 
+      <div className="space-y-4 rounded-lg border border-border bg-background/50 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">
+              AI summaries
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Edit manually or generate with AI, then save the product.
+            </p>
+          </div>
+          {product ? (
+            <Button
+              type="button"
+              className="shrink-0 bg-[#8b5cf6] hover:bg-[#7c3aed]"
+              disabled={isGenerating || isPending}
+              onClick={handleGenerateSummaries}
+            >
+              {isGenerating ? (
+                <>
+                  <LoadingSpinner />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="size-4" />
+                  Generate with AI
+                </>
+              )}
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <label
+            htmlFor="short_description"
+            className="text-sm font-medium text-foreground"
+          >
+            Short description
+          </label>
+          <textarea
+            id="short_description"
+            rows={3}
+            aria-invalid={Boolean(errors.short_description)}
+            className={textareaClassName(Boolean(errors.short_description))}
+            placeholder="Brief product description"
+            {...register("short_description")}
+          />
+          <FormFieldError message={errors.short_description?.message} />
+        </div>
+
+        <div className="space-y-2">
+          <label
+            htmlFor="score_summary"
+            className="text-sm font-medium text-foreground"
+          >
+            Score summary
+          </label>
+          <textarea
+            id="score_summary"
+            rows={4}
+            aria-invalid={Boolean(errors.score_summary)}
+            className={textareaClassName(Boolean(errors.score_summary))}
+            placeholder="Explanation of the product score"
+            {...register("score_summary")}
+          />
+          <FormFieldError message={errors.score_summary?.message} />
+        </div>
+      </div>
+
       <div className="flex gap-2">
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" disabled={isPending || isGenerating}>
           {isPending ? (
             <>
               <LoadingSpinner />

@@ -4,6 +4,7 @@ type AdminApiCallOptions = {
   resource: string;
   action: string;
   id?: string;
+  params?: Record<string, string | boolean | number | undefined>;
   body?: unknown;
 };
 
@@ -15,6 +16,7 @@ export const callAdminApi = async ({
   resource,
   action,
   id,
+  params,
   body,
 }: AdminApiCallOptions): Promise<AdminApiResult> => {
   const baseUrl = process.env.ADMIN_API_URL;
@@ -37,6 +39,13 @@ export const callAdminApi = async ({
   url.searchParams.set("action", action);
   if (id) {
     url.searchParams.set("id", id);
+  }
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) {
+        url.searchParams.set(key, String(value));
+      }
+    }
   }
 
   const response = await fetch(url.toString(), {

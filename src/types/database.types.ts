@@ -269,6 +269,8 @@ export type Database = {
           preservatives: string | null
           product_name: string | null
           score: number | null
+          score_summary: string | null
+          short_description: string | null
           size_count: string | null
           source_url: string | null
           synthetic_materials: string | null
@@ -296,6 +298,8 @@ export type Database = {
           preservatives?: string | null
           product_name?: string | null
           score?: number | null
+          score_summary?: string | null
+          short_description?: string | null
           size_count?: string | null
           source_url?: string | null
           synthetic_materials?: string | null
@@ -323,6 +327,8 @@ export type Database = {
           preservatives?: string | null
           product_name?: string | null
           score?: number | null
+          score_summary?: string | null
+          short_description?: string | null
           size_count?: string | null
           source_url?: string | null
           synthetic_materials?: string | null

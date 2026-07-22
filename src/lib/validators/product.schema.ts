@@ -30,6 +30,8 @@ export const productFormSchema = z.object({
     .string()
     .trim()
     .min(1, "Ingredients list is required"),
+  score_summary: z.string().trim().optional(),
+  short_description: z.string().trim().optional(),
 });
 
 export type ProductFormInput = z.infer<typeof productFormSchema>;

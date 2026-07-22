@@ -290,17 +290,27 @@ const parseScoreAllProductsResponse = (data: unknown): ScoreAllProductsResult =>
   };
 };
 
-export async function scoreAllProducts(): Promise<
-  ActionResult<ScoreAllProductsResult>
-> {
+export type ScoreAllProductsOptions = {
+  /** When false, score_summary is cleared on score change and not regenerated. Defaults to true. */
+  generateSummaries?: boolean;
+};
+
+export async function scoreAllProducts(
+  options: ScoreAllProductsOptions = {},
+): Promise<ActionResult<ScoreAllProductsResult>> {
   const auth = await requireAdmin();
   if (!auth.authorized) {
     return { success: false, error: auth.error };
   }
 
+  const generateSummaries = options.generateSummaries ?? true;
+
   const result = await callAdminApi({
     resource: "products",
     action: "score-all",
+    params: {
+      generate_summaries: generateSummaries,
+    },
   });
 
   if (!result.ok) {
@@ -310,7 +320,182 @@ export async function scoreAllProducts(): Promise<
   revalidatePath("/products");
   revalidatePath("/");
 
-  return { success: true, data: parseScoreAllProductsResponse(result.data) };
+  const parsed = parseScoreAllProductsResponse(result.data);
+  if (!generateSummaries) {
+    return {
+      success: true,
+      data: {
+        ...parsed,
+        message: `${parsed.message}. Score summaries were cleared where scores changed — run Backfill summaries to regenerate empty score summaries and short descriptions.`,
+      },
+    };
+  }
+
+  return { success: true, data: parsed };
+}
+
+export type ProductSummariesResult = {
+  score_summary: string | null;
+  short_description: string | null;
+  generated: boolean;
+  saved: boolean;
+  message: string;
+};
+
+const unwrapPayload = (data: unknown): Record<string, unknown> | null => {
+  if (typeof data !== "object" || data === null) {
+    return null;
+  }
+
+  const record = data as Record<string, unknown>;
+  if (
+    "data" in record &&
+    typeof record.data === "object" &&
+    record.data !== null
+  ) {
+    return record.data as Record<string, unknown>;
+  }
+
+  return record;
+};
+
+/**
+ * Expects:
+ * { success: true, data: { generated, saved, short_description, score_summary } }
+ */
+const parseProductSummariesResponse = (data: unknown): ProductSummariesResult => {
+  const payload = unwrapPayload(data);
+
+  const score_summary =
+    payload && typeof payload.score_summary === "string"
+      ? payload.score_summary
+      : null;
+  const short_description =
+    payload && typeof payload.short_description === "string"
+      ? payload.short_description
+      : null;
+  const generated = payload?.generated === true;
+  const saved = payload?.saved === true;
+
+  const message = saved
+    ? "Summaries generated and saved"
+    : "Summaries generated — review and save when ready";
+
+  return {
+    score_summary,
+    short_description,
+    generated,
+    saved,
+    message,
+  };
+};
+
+export type BackfillSummariesResult = {
+  message: string;
+  total_missing: number;
+  updated: number;
+  failures: ScoreAllProductsFailure[];
+};
+
+/**
+ * Expects:
+ * { success: true, data: { total_missing, updated, failures } }
+ */
+const parseBackfillSummariesResponse = (
+  data: unknown,
+): BackfillSummariesResult => {
+  const payload = unwrapPayload(data);
+
+  const total_missing =
+    payload && typeof payload.total_missing === "number"
+      ? payload.total_missing
+      : 0;
+  const updated =
+    payload && typeof payload.updated === "number" ? payload.updated : 0;
+
+  const failures = Array.isArray(payload?.failures)
+    ? payload.failures.filter(
+        (item): item is ScoreAllProductsFailure =>
+          typeof item === "object" &&
+          item !== null &&
+          "product_id" in item &&
+          "error" in item &&
+          typeof (item as ScoreAllProductsFailure).product_id === "string" &&
+          typeof (item as ScoreAllProductsFailure).error === "string",
+      )
+    : [];
+
+  if (total_missing === 0 && updated === 0 && failures.length === 0) {
+    return {
+      message: "No products needed summary backfill — all summaries are already filled",
+      total_missing,
+      updated,
+      failures,
+    };
+  }
+
+  const parts: string[] = [];
+  parts.push(`${updated} updated`);
+  if (total_missing !== updated) {
+    parts.push(`${total_missing} were missing summaries`);
+  }
+  if (failures.length > 0) {
+    parts.push(`${failures.length} failed`);
+  }
+
+  return {
+    message: `Backfill complete: ${parts.join(", ")}`,
+    total_missing,
+    updated,
+    failures,
+  };
+};
+
+/** Generates score_summary + short_description for one product without saving (save=false). */
+export async function generateProductSummaries(
+  productId: string,
+): Promise<ActionResult<ProductSummariesResult>> {
+  const auth = await requireAdmin();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
+
+  const result = await callAdminApi({
+    resource: "products",
+    action: "generate-summaries",
+    id: productId,
+    params: { save: false },
+  });
+
+  if (!result.ok) {
+    return { success: false, error: result.error };
+  }
+
+  return { success: true, data: parseProductSummariesResponse(result.data) };
+}
+
+/** Fills empty score_summary and short_description across the catalog and saves them. */
+export async function backfillProductSummaries(): Promise<
+  ActionResult<BackfillSummariesResult>
+> {
+  const auth = await requireAdmin();
+  if (!auth.authorized) {
+    return { success: false, error: auth.error };
+  }
+
+  const result = await callAdminApi({
+    resource: "products",
+    action: "backfill-summaries",
+  });
+
+  if (!result.ok) {
+    return { success: false, error: result.error };
+  }
+
+  revalidatePath("/products");
+  revalidatePath("/");
+
+  return { success: true, data: parseBackfillSummariesResponse(result.data) };
 }
 
 const linkProductIngredients = async (
